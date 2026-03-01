@@ -150,7 +150,7 @@ export function GridCard({
   const borderColor = isSelected
     ? 'rgba(255,255,255,0.6)'
     : isMultiSelected
-    ? 'rgba(255,255,255,0.55)'
+    ? 'rgba(99,179,237,0.75)'
     : 'rgba(255,255,255,0.05)';
 
   return (
@@ -164,11 +164,11 @@ export function GridCard({
           animationFillMode: 'both',
           animationTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
           background: isMultiSelected ? 'rgba(28,28,42,0.96)' : 'rgba(15,15,28,0.92)',
-          border: `1px solid ${borderColor}`,
+          border: `${isMultiSelected ? 2 : 1}px solid ${borderColor}`,
           boxShadow: isSelected
             ? `0 0 0 1px rgba(255,255,255,0.15), 0 8px 32px rgba(0,0,0,0.5)`
             : isMultiSelected
-            ? `0 0 0 1px rgba(255,255,255,0.12), 0 4px 24px rgba(0,0,0,0.5)`
+            ? `0 0 0 1px rgba(99,179,237,0.3), 0 0 12px rgba(99,179,237,0.2), 0 4px 24px rgba(0,0,0,0.5)`
             : '0 2px 12px rgba(0,0,0,0.3)',
           transition: 'border-color 120ms, box-shadow 120ms, transform 120ms, background 120ms',
         }}
@@ -267,10 +267,17 @@ export function GridCard({
           {isMultiSelected && (
             <div
               className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(255,255,255,0.92)', boxShadow: '0 0 6px rgba(255,255,255,0.3)' }}
+              style={{
+                background: 'rgba(99,179,237,0.95)',
+                boxShadow: '0 0 8px rgba(99,179,237,0.6)',
+                animationName: 'checkPop',
+                animationDuration: '200ms',
+                animationTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
+                animationFillMode: 'both',
+              }}
             >
               <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                <path d="M2 6l3 3 5-5" stroke="rgba(0,0,0,0.75)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
           )}

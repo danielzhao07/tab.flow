@@ -72,7 +72,7 @@ export function getRedirectUrl(): string {
 
 // ---- Sign in (popup window approach — works reliably in MV3) ----
 
-export async function signIn(): Promise<TokenSet> {
+export async function signIn(identityProvider?: string): Promise<TokenSet> {
   const redirectUri = chrome.identity.getRedirectURL();
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
@@ -85,6 +85,8 @@ export async function signIn(): Promise<TokenSet> {
     code_challenge: challenge,
     code_challenge_method: 'S256',
   });
+
+  if (identityProvider) params.set('identity_provider', identityProvider);
 
   const authUrl = `${COGNITO_DOMAIN}/oauth2/authorize?${params}`;
 
