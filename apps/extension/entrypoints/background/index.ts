@@ -116,7 +116,7 @@ export default defineBackground(() => {
   // First install: auto-trigger sign-in popup + set uninstall feedback URL
   chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'install') {
-      chrome.runtime.setUninstallURL('https://YOUR_GITHUB_USERNAME.github.io/TabFlow/goodbye.html');
+      chrome.runtime.setUninstallURL('https://danielzhao07github.io/TabFlow/goodbye.html');
       const existing = await getStoredTokens();
       if (!existing) {
         openAuthWindow().catch(() => {}); // user may cancel — that's fine
