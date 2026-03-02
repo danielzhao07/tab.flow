@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — TabFlow</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07090f;
+      --surface:   rgba(255,255,255,0.04);
+      --border:    rgba(255,255,255,0.08);
+      --accent:    #6bb3f5;
+      --accent2:   #a78bfa;
+      --text:      rgba(255,255,255,0.82);
+      --muted:     rgba(255,255,255,0.45);
+      --faint:     rgba(255,255,255,0.12);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Ambient blobs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      width: 600px; height: 600px;
+      top: -200px; left: -150px;
+      background: radial-gradient(circle, rgba(107,179,245,0.10) 0%, transparent 70%);
+    }
+    body::after {
+      width: 500px; height: 500px;
+      bottom: -150px; right: -100px;
+      background: radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%);
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    /* Back button */
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      padding: 6px 12px 6px 8px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      margin-bottom: 48px;
+      opacity: 0;
+      transform: translateY(-6px);
+      animation: fadeUp 0.5s 0.1s ease-out forwards;
+    }
+    .back:hover {
+      color: var(--text);
+      border-color: var(--border);
+      background: var(--surface);
+    }
+    .back svg { width: 14px; height: 14px; }
+
+    /* Header */
+    .header {
+      margin-bottom: 56px;
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeUp 0.6s 0.2s ease-out forwards;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .logo-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(107,179,245,0.25), rgba(167,139,250,0.25));
+      border: 1px solid rgba(107,179,245,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-mark svg { width: 18px; height: 18px; }
+
+    .logo-name {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .subtitle span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--faint);
+      display: inline-block;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+      margin-bottom: 56px;
+      opacity: 0;
+      animation: fadeIn 0.8s 0.4s ease-out forwards;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 44px;
+      padding: 28px 32px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: border-color 0.25s, background 0.25s;
+    }
+
+    .section:hover {
+      border-color: rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.055);
+    }
+
+    .section-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+
+    .section-icon svg { width: 18px; height: 18px; }
+
+    .icon-blue  { background: rgba(107,179,245,0.12); border: 1px solid rgba(107,179,245,0.2); color: var(--accent); }
+    .icon-purple{ background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.2); color: var(--accent2); }
+    .icon-green { background: rgba(52,211,153,0.10);  border: 1px solid rgba(52,211,153,0.18); color: #34d399; }
+    .icon-amber { background: rgba(251,191,36,0.10);  border: 1px solid rgba(251,191,36,0.18); color: #fbbf24; }
+    .icon-rose  { background: rgba(251,113,133,0.10); border: 1px solid rgba(251,113,133,0.18); color: #fb7185; }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+    }
+
+    p { color: var(--text); margin-bottom: 10px; }
+    p:last-of-type { margin-bottom: 0; }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 0;
+    }
+
+    li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+
+    li:last-child { border-bottom: none; }
+
+    li::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Third-party grid */
+    .services {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .service-card {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .service-card:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.12);
+    }
+
+    .service-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .service-desc {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* Contact block */
+    .contact-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      background: rgba(107,179,245,0.08);
+      border: 1px solid rgba(107,179,245,0.2);
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .contact-link:hover {
+      background: rgba(107,179,245,0.14);
+      border-color: rgba(107,179,245,0.35);
+    }
+
+    .contact-link svg { width: 14px; height: 14px; }
+
+    /* Footer */
+    footer {
+      margin-top: 64px;
+      padding-top: 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      opacity: 0;
+      animation: fadeIn 0.8s 1.2s ease-out forwards;
+    }
+
+    /* Animations */
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    .section:nth-child(1) { animation: fadeUp 0.55s 0.35s ease-out forwards; }
+    .section:nth-child(2) { animation: fadeUp 0.55s 0.45s ease-out forwards; }
+    .section:nth-child(3) { animation: fadeUp 0.55s 0.55s ease-out forwards; }
+    .section:nth-child(4) { animation: fadeUp 0.55s 0.65s ease-out forwards; }
+    .section:nth-child(5) { animation: fadeUp 0.55s 0.75s ease-out forwards; }
+
+    @media (max-width: 540px) {
+      .section { padding: 22px 20px; }
+      .services { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <a href="javascript:history.back()" class="back">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      Back
+    </a>
+
+    <div class="header">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#6bb3f5">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6z"/>
+          </svg>
+        </div>
+        <span class="logo-name">TabFlow</span>
+      </div>
+
+      <h1>Privacy Policy</h1>
+
+      <div class="subtitle">
+        <span>Effective March 2026</span>
+        <span class="dot"></span>
+        <span>Version 1.0.0</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- 1. What we collect -->
+    <div class="section">
+      <div class="section-icon icon-blue">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <h2>What We Collect</h2>
+      <p>TabFlow collects the minimum data needed to provide its features. Here is exactly what is accessed:</p>
+      <ul>
+        <li>Tab titles, URLs, and favicons — used only to display your tabs in the HUD overlay. Never sent to any server.</li>
+        <li>Tab group names and colors — read locally to show group labels. Never stored remotely.</li>
+        <li>Recently closed tab metadata — read from Chrome's session history to power the "Recently closed" section. Never sent to a server.</li>
+        <li>Your email address — collected only if you choose to create an account, via AWS Cognito.</li>
+        <li>Bookmarks, notes, and workspace data — synced to the cloud only when you are signed in and use those features.</li>
+        <li>Extension settings — stored locally in <code>chrome.storage.local</code>. Optionally synced to the cloud if you are signed in.</li>
+      </ul>
+    </div>
+
+    <!-- 2. Local-only data -->
+    <div class="section">
+      <div class="section-icon icon-green">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <h2>What Stays on Your Device</h2>
+      <p>The following data never leaves your browser under any circumstance:</p>
+      <ul>
+        <li>Your open tab list — titles, URLs, group info, and activity order (MRU) are kept in extension memory only.</li>
+        <li>Tab thumbnails — captured locally and stored only in memory during the current session.</li>
+        <li>Browsing activity used for frecency sorting — stored only in <code>chrome.storage.local</code> on-device.</li>
+        <li>Snooze schedules — stored locally using <code>chrome.alarms</code> and <code>chrome.storage.local</code>.</li>
+        <li>Search history within the HUD — never recorded at all.</li>
+      </ul>
+    </div>
+
+    <!-- 3. Cloud sync -->
+    <div class="section">
+      <div class="section-icon icon-purple">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+        </svg>
+      </div>
+      <h2>Optional Cloud Sync</h2>
+      <p>Cloud features are entirely optional and require you to sign in. If you never create an account, nothing leaves your device.</p>
+      <p>When signed in, the following may be synced to our backend database:</p>
+      <ul>
+        <li>Saved workspaces (tab sets you name and save)</li>
+        <li>Bookmarks saved through TabFlow</li>
+        <li>Notes attached to tabs</li>
+        <li>Your extension settings (theme, grid columns, etc.)</li>
+      </ul>
+      <p style="margin-top:12px; color: rgba(255,255,255,0.45); font-size:13px;">You can delete your account and all associated cloud data at any time by contacting us.</p>
+    </div>
+
+    <!-- 4. Third-party services -->
+    <div class="section">
+      <div class="section-icon icon-amber">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <h2>Third-Party Services</h2>
+      <p>TabFlow uses the following third-party services. Each is only active when you use the relevant feature.</p>
+
+      <div class="services">
+        <div class="service-card">
+          <div class="service-name">Groq</div>
+          <div class="service-desc">Runs the AI assistant. Your query and open tab titles are sent only when you use the AI chat feature.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">AWS Cognito</div>
+          <div class="service-desc">Handles account sign-in. Your email and a hashed password are stored by AWS under their privacy policy.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">AWS S3</div>
+          <div class="service-desc">Used if tab thumbnail syncing is enabled. Images are stored in a private bucket accessible only to your account.</div>
+        </div>
+        <div class="service-card">
+          <div class="service-name">Neon (Postgres)</div>
+          <div class="service-desc">Cloud database for workspaces, bookmarks, notes, and settings when you are signed in.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Contact -->
+    <div class="section">
+      <div class="section-icon icon-rose">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <h2>Contact &amp; Data Requests</h2>
+      <p>Have questions about your data, want to request deletion, or found a privacy concern? Reach out — we respond within 48 hours.</p>
+
+      <a href="https://github.com/YOUR_GITHUB_USERNAME/TabFlow/issues" class="contact-link">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+        </svg>
+        Open an issue on GitHub
+      </a>
+    </div>
+
+    <footer>
+      <span>TabFlow &copy; 2026. All tab data stays local by default.</span>
+      <span style="color: rgba(255,255,255,0.25);">Last updated: March 2026</span>
+    </footer>
+
+  </div>
+</body>
+</html>

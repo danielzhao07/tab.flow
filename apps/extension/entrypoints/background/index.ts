@@ -113,12 +113,10 @@ export default defineBackground(() => {
   // Restore thumbnails from last session
   loadCachedThumbnails();
 
-  // Log the redirect URL so it can be verified in Cognito settings
-  console.log('[TabFlow] Cognito redirect URL:', chrome.identity.getRedirectURL());
-
-  // First install: auto-trigger sign-in popup
+  // First install: auto-trigger sign-in popup + set uninstall feedback URL
   chrome.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason === 'install') {
+      chrome.runtime.setUninstallURL('https://YOUR_GITHUB_USERNAME.github.io/TabFlow/goodbye.html');
       const existing = await getStoredTokens();
       if (!existing) {
         openAuthWindow().catch(() => {}); // user may cancel — that's fine

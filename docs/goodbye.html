@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goodbye — TabFlow</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #07090f;
+      --surface:  rgba(255,255,255,0.04);
+      --border:   rgba(255,255,255,0.08);
+      --accent:   #6bb3f5;
+      --accent2:  #a78bfa;
+      --text:     rgba(255,255,255,0.82);
+      --muted:    rgba(255,255,255,0.45);
+      --faint:    rgba(255,255,255,0.12);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: hidden;
+    }
+
+    /* Ambient blobs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(140px);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      width: 700px; height: 700px;
+      top: -250px; left: -200px;
+      background: radial-gradient(circle, rgba(107,179,245,0.09) 0%, transparent 70%);
+    }
+    body::after {
+      width: 600px; height: 600px;
+      bottom: -200px; right: -150px;
+      background: radial-gradient(circle, rgba(167,139,250,0.10) 0%, transparent 70%);
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 600px;
+      padding: 64px 24px 96px;
+    }
+
+    /* ---- Hero ---- */
+    .hero {
+      text-align: center;
+      margin-bottom: 52px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.65s 0.1s ease-out forwards;
+    }
+
+    .emoji {
+      font-size: 52px;
+      line-height: 1;
+      margin-bottom: 20px;
+      display: block;
+      filter: drop-shadow(0 0 20px rgba(107,179,245,0.3));
+    }
+
+    h1 {
+      font-size: clamp(26px, 5vw, 38px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* ---- Survey card group ---- */
+    .survey-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      opacity: 0;
+      animation: fadeIn 0.5s 0.5s ease-out forwards;
+    }
+
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.18s, border-color 0.18s, transform 0.15s;
+      user-select: none;
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    .card:hover {
+      background: rgba(255,255,255,0.065);
+      border-color: rgba(255,255,255,0.13);
+      transform: translateY(-1px);
+    }
+
+    .card.selected {
+      background: rgba(107,179,245,0.10);
+      border-color: rgba(107,179,245,0.35);
+    }
+
+    .card.selected .check {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .card.selected .check::after {
+      opacity: 1;
+      transform: scale(1) rotate(-45deg);
+    }
+
+    .check {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      border: 1.5px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      flex-shrink: 0;
+      position: relative;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .check::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 4px;
+      width: 9px; height: 5px;
+      border-left: 2px solid #07090f;
+      border-bottom: 2px solid #07090f;
+      opacity: 0;
+      transform: scale(0.6) rotate(-45deg);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .card-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Staggered card animations */
+    .card:nth-child(1) { animation: fadeUp 0.5s 0.55s ease-out forwards; }
+    .card:nth-child(2) { animation: fadeUp 0.5s 0.62s ease-out forwards; }
+    .card:nth-child(3) { animation: fadeUp 0.5s 0.69s ease-out forwards; }
+    .card:nth-child(4) { animation: fadeUp 0.5s 0.76s ease-out forwards; }
+    .card:nth-child(5) { animation: fadeUp 0.5s 0.83s ease-out forwards; }
+
+    /* ---- Comment box ---- */
+    .comment-wrap {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.35s ease-out, opacity 0.3s ease-out, margin 0.35s ease-out;
+      margin-bottom: 0;
+    }
+
+    .comment-wrap.visible {
+      max-height: 160px;
+      opacity: 1;
+      margin-bottom: 24px;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.55;
+      resize: none;
+      outline: none;
+      height: 110px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    textarea::placeholder { color: var(--muted); }
+
+    textarea:focus {
+      border-color: rgba(107,179,245,0.4);
+      background: rgba(107,179,245,0.04);
+    }
+
+    /* ---- Submit button ---- */
+    .submit-wrap {
+      opacity: 0;
+      animation: fadeIn 0.5s 0.9s ease-out forwards;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px 24px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      background: linear-gradient(135deg, rgba(107,179,245,0.25), rgba(167,139,250,0.25));
+      border: 1px solid rgba(107,179,245,0.3);
+      color: var(--accent);
+      transition: background 0.2s, border-color 0.2s, transform 0.15s, opacity 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(107,179,245,0.35), rgba(167,139,250,0.35));
+      border-color: rgba(107,179,245,0.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-submit:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    /* ---- Thank you state ---- */
+    .thank-you {
+      display: none;
+      text-align: center;
+      padding: 40px 24px;
+      opacity: 0;
+      transform: translateY(16px);
+    }
+
+    .thank-you.visible {
+      display: block;
+      animation: fadeUp 0.55s ease-out forwards;
+    }
+
+    .thank-you .ty-emoji {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 18px;
+      filter: drop-shadow(0 0 16px rgba(107,179,245,0.25));
+    }
+
+    .thank-you h2 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+
+    .thank-you p {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 340px;
+      margin: 0 auto 24px;
+    }
+
+    .reinstall-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: rgba(107,179,245,0.08);
+      border: 1px solid rgba(107,179,245,0.2);
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .reinstall-link:hover {
+      background: rgba(107,179,245,0.14);
+      border-color: rgba(107,179,245,0.35);
+    }
+
+    /* ---- Footer ---- */
+    footer {
+      margin-top: 64px;
+      text-align: center;
+      color: rgba(255,255,255,0.2);
+      font-size: 12px;
+      opacity: 0;
+      animation: fadeIn 0.8s 1.1s ease-out forwards;
+    }
+
+    footer a {
+      color: rgba(255,255,255,0.3);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    footer a:hover { color: var(--muted); }
+
+    /* ---- Animations ---- */
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Hero -->
+    <div class="hero">
+      <span class="emoji">💙</span>
+      <h1>We're sad to see you go</h1>
+      <p class="subtitle">Before you leave, would you mind sharing why? It only takes 10 seconds and helps us make TabFlow better.</p>
+    </div>
+
+    <!-- Survey form -->
+    <div id="survey">
+      <p class="survey-label">What went wrong?</p>
+
+      <div class="cards" id="cards">
+        <div class="card" data-value="bugs" onclick="toggle(this)">
+          <div class="check"></div>
+          <span class="card-text">Too many bugs</span>
+        </div>
+        <div class="card" data-value="hard-to-use" onclick="toggle(this)">
+          <div class="check"></div>
+          <span class="card-text">Hard to use</span>
+        </div>
+        <div class="card" data-value="dont-need" onclick="toggle(this)">
+          <div class="check"></div>
+          <span class="card-text">Don't need it anymore</span>
+        </div>
+        <div class="card" data-value="missing-features" onclick="toggle(this)">
+          <div class="check"></div>
+          <span class="card-text">Missing features I need</span>
+        </div>
+        <div class="card" data-value="other" onclick="toggle(this)">
+          <div class="check"></div>
+          <span class="card-text">Other</span>
+        </div>
+      </div>
+
+      <!-- Sliding comment box (shown when "Other" is selected) -->
+      <div class="comment-wrap" id="commentWrap">
+        <textarea id="comment" placeholder="Tell us more — we read every message..." maxlength="500"></textarea>
+      </div>
+
+      <div class="submit-wrap">
+        <button class="btn-submit" id="submitBtn" onclick="submit()">Send Feedback</button>
+      </div>
+    </div>
+
+    <!-- Thank-you state (hidden until submitted) -->
+    <div class="thank-you" id="thankYou">
+      <span class="ty-emoji">🙏</span>
+      <h2>Thank you for the feedback</h2>
+      <p>Your response was recorded. We'll use it to make TabFlow better for everyone.</p>
+      <a href="https://chrome.google.com/webstore/search/tabflow" class="reinstall-link">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Reinstall TabFlow
+      </a>
+    </div>
+
+    <footer>
+      <a href="privacy.html">Privacy Policy</a>
+      &nbsp;&middot;&nbsp;
+      TabFlow &copy; 2026
+    </footer>
+
+  </div>
+
+  <script>
+    function toggle(card) {
+      card.classList.toggle('selected');
+      const hasOther = document.querySelector('.card[data-value="other"].selected');
+      const wrap = document.getElementById('commentWrap');
+      if (hasOther) {
+        wrap.classList.add('visible');
+        setTimeout(() => document.getElementById('comment').focus(), 50);
+      } else {
+        wrap.classList.remove('visible');
+      }
+    }
+
+    function submit() {
+      const selected = [...document.querySelectorAll('.card.selected')]
+        .map(c => c.dataset.value);
+      const comment = document.getElementById('comment').value.trim();
+
+      // Build payload
+      const payload = { reasons: selected, comment, ts: new Date().toISOString() };
+
+      // Fire-and-forget to GitHub Issues API (or any endpoint you set up)
+      // For now, just log and show thank-you state
+      console.log('TabFlow uninstall feedback:', payload);
+
+      // Transition to thank-you
+      const survey = document.getElementById('survey');
+      const thankYou = document.getElementById('thankYou');
+
+      survey.style.opacity = '0';
+      survey.style.transform = 'translateY(-10px)';
+      survey.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+      survey.style.pointerEvents = 'none';
+
+      setTimeout(() => {
+        survey.style.display = 'none';
+        thankYou.classList.add('visible');
+      }, 300);
+    }
+  </script>
+</body>
+</html>

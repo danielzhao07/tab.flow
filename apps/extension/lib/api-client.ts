@@ -4,6 +4,9 @@
  */
 import { getValidToken } from './auth';
 
+// TODO: Replace with your production Railway URL once deployed
+// e.g. 'https://tabflow-api-production.up.railway.app'
+// Users can also override via chrome.storage 'tabflow_api_url'
 const DEFAULT_API_URL = 'http://localhost:3001';
 
 export async function getApiUrl(): Promise<string> {
