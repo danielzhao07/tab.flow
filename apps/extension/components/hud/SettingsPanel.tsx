@@ -169,10 +169,10 @@ export function SettingsPanel({
               <div className="flex flex-col items-center pt-6 pb-4 px-5">
                 <img
                   src={chrome.runtime.getURL('TabFlowV4.png')}
-                  alt="TabFlow"
+                  alt="Tab.Flow"
                   className="w-32 h-32 object-contain mb-3"
                 />
-                <span className="text-[15px] font-semibold text-white/90 tracking-tight">TabFlow</span>
+                <span className="text-[15px] font-semibold text-white/90 tracking-tight">Tab.Flow</span>
                 <span className="text-[11px] text-white/35 mt-0.5">Your intelligent tab manager</span>
               </div>
 

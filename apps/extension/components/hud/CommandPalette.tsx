@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 interface Command {
   id: string;
@@ -23,8 +23,6 @@ export function useCommands(actions: {
   toggleWindowFilter: () => void;
   cycleSortMode: () => void;
   selectAll: () => void;
-  openSettings: () => void;
-  openCheatSheet: () => void;
 }): Command[] {
   return useMemo(() => [
     { id: 'close-dupes', label: 'Close duplicate tabs', description: 'Close all duplicate tabs keeping one of each', action: actions.closeDuplicates },
@@ -33,15 +31,14 @@ export function useCommands(actions: {
     { id: 'ungroup', label: 'Ungroup selected tabs', description: 'Remove tabs from their group', shortcut: 'Ctrl+Shift+G', action: actions.ungroupSelectedTabs },
     { id: 'reopen', label: 'Reopen last closed tab', description: 'Restore the most recently closed tab', shortcut: 'Ctrl+Shift+T', action: actions.reopenLastClosed },
     { id: 'window-filter', label: 'Toggle window filter', description: 'Switch between all windows and current window', shortcut: 'Ctrl+F', action: actions.toggleWindowFilter },
-    { id: 'sort', label: 'Cycle sort mode', description: 'Switch between MRU, frecency, domain, and A-Z sorting', shortcut: 'Ctrl+S', action: actions.cycleSortMode },
+    { id: 'sort', label: 'Sort by name', description: 'Toggle between MRU order and alphabetical A–Z', shortcut: 'Ctrl+S', action: actions.cycleSortMode },
     { id: 'select-all', label: 'Select all tabs', description: 'Select or deselect all visible tabs', shortcut: 'Ctrl+A', action: actions.selectAll },
-    { id: 'settings', label: 'Open settings', description: 'Open the TabFlow settings page', action: actions.openSettings },
-    { id: 'help', label: 'Keyboard shortcuts', description: 'Show all available keyboard shortcuts', shortcut: '?', action: actions.openCheatSheet },
   ], [actions]);
 }
 
 export function CommandPalette({ query, commands, onClose }: CommandPaletteProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands;
@@ -54,6 +51,16 @@ export function CommandPalette({ query, commands, onClose }: CommandPaletteProps
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
+
+  // Auto-scroll the selected command into view
+  useEffect(() => {
+    const container = listRef.current;
+    if (!container) return;
+    const items = container.children;
+    if (items[selectedIndex]) {
+      (items[selectedIndex] as HTMLElement).scrollIntoView({ block: 'nearest' });
+    }
+  }, [selectedIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,7 +90,7 @@ export function CommandPalette({ query, commands, onClose }: CommandPaletteProps
   }
 
   return (
-    <div className="flex-1 overflow-y-auto min-h-0 py-1">
+    <div ref={listRef} className="h-full overflow-y-auto py-1" style={{ maxHeight: '100%' }}>
       {filtered.map((cmd, index) => (
         <div
           key={cmd.id}

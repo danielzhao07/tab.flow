@@ -1,5 +1,5 @@
 /**
- * Cognito PKCE authentication for the TabFlow Chrome extension.
+ * Cognito PKCE authentication for the Tab.Flow Chrome extension.
  * Opens a popup window for the Cognito hosted UI and intercepts the
  * callback redirect via chrome.tabs.onUpdated.
  *

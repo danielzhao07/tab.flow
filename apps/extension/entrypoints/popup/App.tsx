@@ -80,7 +80,7 @@ export function App() {
             <span className="text-[10px] font-bold text-white">T</span>
           </div>
           <div>
-            <h1 className="text-sm font-semibold leading-tight">TabFlow</h1>
+            <h1 className="text-sm font-semibold leading-tight">Tab.Flow</h1>
             <p className="text-[10px] text-white/35 leading-tight">
               {view === 'tabs' ? 'Recent tabs' : 'Workspaces'}
             </p>

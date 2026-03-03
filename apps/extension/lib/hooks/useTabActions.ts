@@ -14,7 +14,7 @@ export interface TabActions {
   dissolveGroup: (groupId: number) => Promise<void>;
   toggleBookmark: (tabId: number) => Promise<void>;
   saveNote: (tabId: number, url: string, note: string) => Promise<void>;
-  snoozeTab: (tabId: number, durationMs: number) => Promise<void>;
+
   moveToWindow: (tabId: number, windowId: number) => Promise<void>;
   reorderTabs: (fromIndex: number, toIndex: number) => Promise<void>;
   toggleMute: (tabId: number) => Promise<void>;
@@ -48,12 +48,22 @@ export function useTabActions(s: HudState): TabActions {
     // Mark as extension-initiated so the 'tab-removed' broadcast handler skips the toast
     s.pendingExtensionCloseIdsRef.current.add(tabId);
     chrome.runtime.sendMessage({ type: 'close-tab', payload: { tabId } });
-    s.setTabs((prev) => {
-      const next = prev.filter((t) => t.tabId !== tabId);
-      s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
-      return next;
-    });
-    // Remove from multi-selection if present
+    // Start exit animation — tab stays in list but renders as closing
+    s.setClosingTabIds((prev) => new Set([...prev, tabId]));
+    // After animation completes, actually remove from state
+    setTimeout(() => {
+      s.setTabs((prev) => {
+        const next = prev.filter((t) => t.tabId !== tabId);
+        s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
+        return next;
+      });
+      s.setClosingTabIds((prev) => {
+        const next = new Set(prev);
+        next.delete(tabId);
+        return next;
+      });
+    }, 300);
+    // Remove from multi-selection immediately
     s.setSelectedTabs((prev) => {
       if (!prev.has(tabId)) return prev;
       const next = new Set(prev);
@@ -91,16 +101,26 @@ export function useTabActions(s: HudState): TabActions {
   }, [s]);
 
   const closeSelectedTabs = useCallback(() => {
-    for (const tabId of s.selectedTabs) {
+    const toClose = new Set(s.selectedTabs);
+    for (const tabId of toClose) {
+      s.pendingExtensionCloseIdsRef.current.add(tabId);
       chrome.runtime.sendMessage({ type: 'close-tab', payload: { tabId } });
     }
-    const toClose = new Set(s.selectedTabs);
-    s.setTabs((prev) => {
-      const next = prev.filter((t) => !toClose.has(t.tabId));
-      s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
-      return next;
-    });
+    // Start exit animation for all selected
+    s.setClosingTabIds((prev) => new Set([...prev, ...toClose]));
     s.setSelectedTabs(new Set());
+    setTimeout(() => {
+      s.setTabs((prev) => {
+        const next = prev.filter((t) => !toClose.has(t.tabId));
+        s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
+        return next;
+      });
+      s.setClosingTabIds((prev) => {
+        const next = new Set(prev);
+        for (const tabId of toClose) next.delete(tabId);
+        return next;
+      });
+    }, 300);
   }, [s]);
 
   const closeDuplicates = useCallback(() => {
@@ -109,21 +129,29 @@ export function useTabActions(s: HudState): TabActions {
       if (ids.length > 1) toClose.push(...ids.slice(1));
     }
     for (const tabId of toClose) {
+      s.pendingExtensionCloseIdsRef.current.add(tabId);
       chrome.runtime.sendMessage({ type: 'close-tab', payload: { tabId } });
     }
     const closeSet = new Set(toClose);
-    s.setTabs((prev) => {
-      const next = prev.filter((t) => !closeSet.has(t.tabId));
-      s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
-      return next;
-    });
+    // Start exit animation
+    s.setClosingTabIds((prev) => new Set([...prev, ...closeSet]));
+    setTimeout(() => {
+      s.setTabs((prev) => {
+        const next = prev.filter((t) => !closeSet.has(t.tabId));
+        s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
+        return next;
+      });
+      s.setClosingTabIds((prev) => {
+        const next = new Set(prev);
+        for (const tabId of closeSet) next.delete(tabId);
+        return next;
+      });
+    }, 300);
   }, [s]);
 
   const groupSelectedTabs = useCallback(async () => {
-    const tabIds = s.selectedTabs.size > 0
-      ? [...s.selectedTabs]
-      : s.displayTabs[s.selectedIndex] ? [s.displayTabs[s.selectedIndex].tabId] : [];
-    if (tabIds.length === 0) return;
+    if (s.selectedTabs.size === 0) return;
+    const tabIds = [...s.selectedTabs];
     const domainCounts = new Map<string, number>();
     for (const id of tabIds) {
       const tab = s.tabs.find((t) => t.tabId === id);
@@ -180,19 +208,6 @@ export function useTabActions(s: HudState): TabActions {
     });
   }, [s]);
 
-  const snoozeTab = useCallback(async (tabId: number, durationMs: number) => {
-    const tab = s.tabs.find((t) => t.tabId === tabId);
-    if (!tab) return;
-    await chrome.runtime.sendMessage({ type: 'snooze-tab', payload: { tabId, url: tab.url, title: tab.title, faviconUrl: tab.faviconUrl, durationMs } });
-    s.setTabs((prev) => {
-      const next = prev.filter((t) => t.tabId !== tabId);
-      s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
-      return next;
-    });
-    const title = tab.title.length > 30 ? tab.title.slice(0, 30) + '...' : tab.title;
-    s.setUndoToast({ message: `Snoozed "${title}"` });
-  }, [s]);
-
   const moveToWindow = useCallback(async (tabId: number, windowId: number) => {
     await chrome.runtime.sendMessage({ type: 'move-to-window', payload: { tabId, windowId } });
     s.fetchTabs();
@@ -212,8 +227,11 @@ export function useTabActions(s: HudState): TabActions {
   const toggleMute = useCallback(async (tabId: number) => {
     const tab = s.tabs.find((t) => t.tabId === tabId);
     if (!tab) return;
-    await chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted: !tab.isMuted } });
-    s.fetchTabs();
+    const newMuted = !tab.isMuted;
+    // Optimistically update local state immediately
+    s.setTabs((prev) => prev.map((t) => t.tabId === tabId ? { ...t, isMuted: newMuted } : t));
+    // Concurrently update Chrome's native mute state
+    await chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted: newMuted } });
   }, [s]);
 
   const closeByDomain = useCallback(async (tabId: number, domain: string) => {
@@ -321,7 +339,7 @@ export function useTabActions(s: HudState): TabActions {
 
   return {
     switchToTab, closeTab, togglePin, toggleSelect, closeSelectedTabs, closeDuplicates,
-    groupSelectedTabs, ungroupSelectedTabs, dissolveGroup, toggleBookmark, saveNote, snoozeTab,
+    groupSelectedTabs, ungroupSelectedTabs, dissolveGroup, toggleBookmark, saveNote,
     moveToWindow, reorderTabs, toggleMute, closeByDomain, groupSuggestionTabs,
     restoreSession, reopenLastClosed, selectAll, duplicateTab, moveToNewWindow,
     moveSelectedToNewWindow, reloadTab, groupTab, ungroupTab,

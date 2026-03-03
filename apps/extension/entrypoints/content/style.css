@@ -145,6 +145,22 @@ input[type='range'].slider-minimal::-moz-range-thumb {
   border: none;
 }
 
+/* Selected card glow pulse — keyboard navigation highlight */
+@keyframes selectedGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(100,170,255,0.7),
+                0 0 14px rgba(100,170,255,0.3),
+                0 0 36px rgba(100,170,255,0.1),
+                0 8px 32px rgba(0,0,0,0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(100,170,255,0.95),
+                0 0 22px rgba(100,170,255,0.45),
+                0 0 44px rgba(100,170,255,0.18),
+                0 8px 32px rgba(0,0,0,0.5);
+  }
+}
+
 /* Multi-select checkmark bounce */
 @keyframes checkPop {
   0%   { transform: scale(0); opacity: 0; }

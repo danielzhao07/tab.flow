@@ -3,8 +3,8 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'TabFlow',
-    description: 'Stop losing your tabs. TabFlow gives you a stunning visual grid, an AI tab assistant, and instant control. Just press Alt+Q.',
+    name: 'Tab.Flow',
+    description: 'Stop losing your tabs. Tab.Flow gives you a stunning visual grid, an AI tab assistant, and instant control. Just press Alt+Q.',
     version: '1.0.0',
     icons: {
       '16': 'icon-16.png',
@@ -24,7 +24,7 @@ export default defineConfig({
           windows: 'Alt+Q',
           mac: 'Alt+Q',
         },
-        description: 'Toggle TabFlow HUD overlay',
+        description: 'Toggle Tab.Flow HUD overlay',
       },
     },
   },

@@ -408,7 +408,7 @@ export function App() {
                   }}>
                     <img
                       src={logoUrl}
-                      alt="TabFlow"
+                      alt="Tab.Flow"
                       style={{
                         width: 210, height: 210, objectFit: 'contain',
                         mixBlendMode: 'screen', flexShrink: 0,
@@ -418,7 +418,7 @@ export function App() {
                 )}
 
                 <div style={{ fontSize: 22, fontWeight: 800, color: 'white', letterSpacing: '-0.5px' }}>
-                  TabFlow
+                  Tab.Flow
                 </div>
                 <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.28)', marginTop: 5, marginBottom: 24, letterSpacing: '0.01em' }}>
                   {view === 'confirm' ? 'Check your email for a code' : 'Your intelligent tab manager'}

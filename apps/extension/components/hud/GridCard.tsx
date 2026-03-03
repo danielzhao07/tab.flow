@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { TabInfo } from '@/lib/types';
-import { ContextMenu, MenuIcons, type ContextMenuItem } from './ContextMenu';
+import { MenuIcons, type ContextMenuItem } from './ContextMenu';
 
 const GROUP_COLORS: Record<string, string> = {
   blue: '#8ab4f8', cyan: '#78d9ec', green: '#81c995', yellow: '#fdd663',
@@ -40,6 +40,7 @@ interface GridCardProps {
   onReloadSelected: () => void;
   hasGroupedInSelection: boolean;
   animDelay?: number;
+  onContextMenuOpen?: (x: number, y: number, items: ContextMenuItem[]) => void;
 }
 
 function getDomain(url: string): string {
@@ -61,10 +62,9 @@ export function GridCard({
   onDuplicate, onMoveToNewWindow, onReload, onToggleBookmark, onToggleMute,
   onGroupTab, onUngroupTab, onCloseSelected, onGroupSelected, onUngroupSelected, onMoveSelectedToNewWindow,
   onPinSelected, onBookmarkSelected, onMuteSelected, onDuplicateSelected, onReloadSelected,
-  hasGroupedInSelection, animDelay = 0,
+  hasGroupedInSelection, animDelay = 0, onContextMenuOpen,
 }: GridCardProps) {
   const [faviconError, setFaviconError] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const domain = getDomain(tab.url);
   const color = domainColor(domain);
@@ -75,7 +75,7 @@ export function GridCard({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
+    onContextMenuOpen?.(e.clientX, e.clientY, contextItems);
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -198,7 +198,7 @@ export function GridCard({
   const contextItems = isInMultiSelect ? multiContextItems : singleContextItems;
 
   const borderColor = isSelected
-    ? 'rgba(255,255,255,0.6)'
+    ? 'rgba(100,180,255,0.92)'
     : isMultiSelected
     ? 'rgba(99,179,237,0.75)'
     : 'rgba(255,255,255,0.05)';
@@ -213,10 +213,12 @@ export function GridCard({
           animationDelay: `${animDelay}ms`,
           animationFillMode: 'both',
           animationTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-          background: isMultiSelected ? 'rgba(28,28,42,0.96)' : 'rgba(15,15,28,0.92)',
-          border: `${isMultiSelected ? 2 : 1}px solid ${borderColor}`,
+          background: isSelected
+            ? 'rgba(16,24,46,0.97)'
+            : isMultiSelected ? 'rgba(28,28,42,0.96)' : 'rgba(15,15,28,0.92)',
+          border: `${isSelected || isMultiSelected ? 2 : 1}px solid ${borderColor}`,
           boxShadow: isSelected
-            ? `0 0 0 1px rgba(255,255,255,0.15), 0 8px 32px rgba(0,0,0,0.5)`
+            ? `inset 0 0 0 1px rgba(100,180,255,0.12), 0 4px 20px rgba(0,0,0,0.45)`
             : isMultiSelected
             ? `0 0 0 1px rgba(99,179,237,0.3), 0 0 12px rgba(99,179,237,0.2), 0 4px 24px rgba(0,0,0,0.5)`
             : '0 2px 12px rgba(0,0,0,0.3)',
@@ -264,7 +266,8 @@ export function GridCard({
 
           {/* Status icons */}
           {tab.isPinned && <span className="text-[10px] text-amber-400/60 shrink-0">📌</span>}
-          {tab.isAudible && <span className="text-[10px] text-green-400/70 shrink-0">♪</span>}
+          {tab.isAudible && !tab.isMuted && <span className="text-[10px] text-green-400/70 shrink-0">♪</span>}
+          {tab.isMuted && <span className="text-[10px] text-red-400/70 shrink-0">🔇</span>}
           {isBookmarked && <span className="text-[10px] text-amber-400/60 shrink-0">★</span>}
 
           {/* Close button */}
@@ -347,15 +350,6 @@ export function GridCard({
           )}
         </div>
       </div>
-
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={contextItems}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
     </>
   );
 }

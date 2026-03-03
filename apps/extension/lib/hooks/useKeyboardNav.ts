@@ -30,7 +30,7 @@ export function useKeyboardNav(
           if (e.key === 'g') { e.preventDefault(); a.groupSelectedTabs(); return; }
           if (e.key === 'b') { e.preventDefault(); if (s.displayTabs[s.selectedIndex]) a.toggleBookmark(s.displayTabs[s.selectedIndex].tabId); return; }
           if (e.key === 'm') { e.preventDefault(); if (s.displayTabs[s.selectedIndex]) a.toggleMute(s.displayTabs[s.selectedIndex].tabId); return; }
-          if (e.key === 's') { e.preventDefault(); s.setSortMode((p) => p === 'mru' ? 'frecency' : p === 'frecency' ? 'domain' : p === 'domain' ? 'title' : 'mru'); return; }
+          if (e.key === 's') { e.preventDefault(); s.setSortMode((p) => p === 'mru' ? 'title' : 'mru'); return; }
           if (e.key === 'a') { e.preventDefault(); a.selectAll(); return; }
         }
         return;
@@ -38,8 +38,6 @@ export function useKeyboardNav(
 
       // --- Non-ctrl ---
       if (!isTyping && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        // ? => cheat sheet
-        if (e.key === '?') { e.preventDefault(); s.setShowCheatSheet((p) => !p); return; }
         // 1-9 quick-switch
         if (e.key >= '1' && e.key <= '9') {
           const idx = parseInt(e.key) - 1;

@@ -9,11 +9,11 @@ import { BottomBar } from './BottomBar';
 import { WindowStrip } from './WindowStrip';
 import { WorkspaceSection } from './WorkspaceSection';
 import { AnalyticsBar } from './AnalyticsBar';
-import { CheatSheet } from './CheatSheet';
 import { UndoToast } from './UndoToast';
 import { CommandPalette, useCommands } from './CommandPalette';
 import { GroupSuggestions } from './GroupSuggestions';
 import { SettingsPanel } from './SettingsPanel';
+import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { checkHealth } from '@/lib/api-client';
 import { getStoredTokens, type TokenSet } from '@/lib/auth';
 import { AiAgentPanel, AiThinkingBar } from './AiAgentPanel';
@@ -33,6 +33,7 @@ export function HudOverlay() {
   const [completedCount, setCompletedCount] = useState(0);
   const [wsRefreshKey, setWsRefreshKey] = useState(0);
   const promptHistoryRef = useRef<string[]>([]);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
 
   // TabGrid computes adaptive cols (depends on container size) and reports it back
   const [cols, setCols] = useState(1);
@@ -57,6 +58,7 @@ export function HudOverlay() {
     const interval = setInterval(() => { s.fetchTabs(); }, 750);
     return () => clearInterval(interval);
   }, [s.visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Load prompt history from storage on mount (shared across tabs + sessions)
   useEffect(() => {
@@ -104,19 +106,34 @@ export function HudOverlay() {
       }
 
       if (message.type === 'tab-removed' && s.visible && message.tabId) {
-        if (s.pendingExtensionCloseIdsRef.current.has(message.tabId)) {
-          // Extension-initiated close — toast already shown by closeTab(), just clean up
-          s.pendingExtensionCloseIdsRef.current.delete(message.tabId);
-        } else if (message.title) {
-          // Chrome-native close — show UndoToast using title sent by background
-          const t = message.title;
-          s.setUndoToast({ message: `Closed "${t.length > 30 ? t.slice(0, 30) + '…' : t}"` });
+        const tid = message.tabId;
+        if (s.pendingExtensionCloseIdsRef.current.has(tid)) {
+          // Extension-initiated close — closeTab() already handling animation + removal
+          s.pendingExtensionCloseIdsRef.current.delete(tid);
+        } else {
+          // Chrome-native close — show UndoToast and animate exit
+          if (message.title) {
+            const t = message.title;
+            s.setUndoToast({ message: `Closed "${t.length > 30 ? t.slice(0, 30) + '…' : t}"` });
+          }
+          s.setClosingTabIds((prev) => new Set([...prev, tid]));
+          setTimeout(() => {
+            s.setTabs((prev) => {
+              const next = prev.filter((t) => t.tabId !== tid);
+              s.setSelectedIndex((idx) => Math.min(idx, Math.max(0, next.length - 1)));
+              return next;
+            });
+            s.setClosingTabIds((prev) => {
+              const next = new Set(prev);
+              next.delete(tid);
+              return next;
+            });
+          }, 300);
         }
-        s.setTabs((prev) => prev.filter((t) => t.tabId !== message.tabId));
         s.setSelectedTabs((prev) => {
-          if (!prev.has(message.tabId!)) return prev;
+          if (!prev.has(tid)) return prev;
           const next = new Set(prev);
-          next.delete(message.tabId!);
+          next.delete(tid);
           return next;
         });
       }
@@ -142,10 +159,8 @@ export function HudOverlay() {
     ungroupSelectedTabs: a.ungroupSelectedTabs,
     reopenLastClosed: a.reopenLastClosed,
     toggleWindowFilter: () => s.setWindowFilter((p) => p === 'all' ? 'current' : 'all'),
-    cycleSortMode: () => s.setSortMode((p) => p === 'mru' ? 'frecency' : p === 'frecency' ? 'domain' : p === 'domain' ? 'title' : 'mru'),
+    cycleSortMode: () => s.setSortMode((p) => p === 'mru' ? 'title' : 'mru'),
     selectAll: a.selectAll,
-    openSettings: () => { chrome.runtime.openOptionsPage(); s.hide(); },
-    openCheatSheet: () => s.setShowCheatSheet(true),
   });
 
   const executeAction = useCallback(async (action: AgentAction) => {
@@ -297,6 +312,7 @@ export function HudOverlay() {
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           setShowSettings(false);
+          setCtxMenu(null);
           s.hide();
         }
       }}
@@ -319,7 +335,7 @@ export function HudOverlay() {
         {/* Top bar: logo + tab count + analytics (left) · gear (right) — in flow so grid doesn't overlap */}
         <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-1" style={{ zIndex: 2147483646 }}>
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">TabFlow</span>
+            <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">Tab.Flow</span>
             <span
               className="text-[10px] text-white/20 px-1.5 py-0.5 rounded-md"
               style={{ background: 'rgba(255,255,255,0.06)' }}
@@ -398,6 +414,8 @@ export function HudOverlay() {
               actions={a}
               onColsComputed={onColsComputed}
               thumbnails={s.thumbnails}
+              closingTabIds={s.closingTabIds}
+              onContextMenuOpen={(x, y, items) => setCtxMenu({ x, y, items })}
             />
           )}
         </div>
@@ -446,8 +464,13 @@ export function HudOverlay() {
         </div>
       </div>
 
-      {s.showCheatSheet && (
-        <CheatSheet onClose={() => s.setShowCheatSheet(false)} />
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenu.items}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
 
       {s.undoToast && (

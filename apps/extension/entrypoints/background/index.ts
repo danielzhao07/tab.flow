@@ -4,7 +4,7 @@ import { getMRUList, setMRUList } from '@/lib/storage';
 import { recordVisit } from '@/lib/frecency';
 import { getBookmarks, addBookmark, removeBookmark } from '@/lib/bookmarks';
 import { getNotesMap, saveNote, deleteNote } from '@/lib/notes';
-import { getSnoozedTabs, snoozeTab, removeSnoozedTab, wakeExpiredTabs } from '@/lib/snooze';
+
 import { getApiUrl, getDeviceId } from '@/lib/api-client';
 import { saveWorkspace } from '@/lib/workspaces';
 import { signOut, getStoredTokens, type TokenSet } from '@/lib/auth';
@@ -65,8 +65,8 @@ function persistThumbnails() {
 
 // Track whether the HUD overlay is currently visible (skip captures while it's showing)
 let hudVisible = false;
-// Timestamp of the last HUD hide — captures are blocked for 250ms after hiding
-// to cover the 150ms CSS fade-out animation and any async timing slack.
+// Timestamp of the last HUD hide — captures are blocked for 500ms after hiding
+// to generously cover the 180ms CSS fade-out animation and any async timing slack.
 let hudHideTime = 0;
 // Double-press (Alt+Q+Q) detection — tracked in background for zero-latency timing
 let lastCommandTime = 0;
@@ -115,6 +115,10 @@ export default defineBackground(() => {
 
   // Restore thumbnails from last session
   loadCachedThumbnails();
+
+  // On startup, capture the active tab in every window so thumbnails are
+  // available immediately if the user opens the HUD right away.
+  captureAllWindowsActiveTabs();
 
   // First install: auto-trigger sign-in popup + set uninstall feedback URL
   chrome.runtime.onInstalled.addListener(async ({ reason }) => {
@@ -329,9 +333,10 @@ export default defineBackground(() => {
       }
 
       if (activeTab?.id) {
-        // Capture BEFORE showing HUD so we get the actual page, not the overlay
+        // Capture ALL windows' active tabs BEFORE showing HUD so we always
+        // have fresh screenshots (like Windows Alt+Tab) — never the overlay.
         if (!hudVisible) {
-          await captureThumbnail(activeTab.id, activeTab.windowId!);
+          await captureAllWindowsActiveTabs();
           if (pendingToggleId !== myToggleId) return; // double-press arrived during capture
         }
         const wasVisible = hudVisible;
@@ -677,28 +682,6 @@ export default defineBackground(() => {
       return true;
     }
 
-    // Tab snooze
-    if (message.type === 'snooze-tab') {
-      const { tabId, url, title, faviconUrl, durationMs } = message.payload;
-      const now = Date.now();
-      snoozeTab({ url, title, faviconUrl, snoozedAt: now, wakeAt: now + durationMs }).then((tabs) => {
-        chrome.tabs.remove(tabId).catch(() => {});
-        sendResponse({ success: true, snoozedTabs: tabs });
-      });
-      return true;
-    }
-
-    if (message.type === 'get-snoozed') {
-      getSnoozedTabs().then((tabs) => sendResponse({ snoozedTabs: tabs }));
-      return true;
-    }
-
-    if (message.type === 'cancel-snooze') {
-      const { url, wakeAt } = message.payload;
-      removeSnoozedTab(url, wakeAt).then((tabs) => sendResponse({ snoozedTabs: tabs }));
-      return true;
-    }
-
     // Move multiple tabs to a new window
     if (message.type === 'move-tabs-to-new-window') {
       const { tabIds } = message.payload as { tabIds: number[] };
@@ -1015,10 +998,10 @@ export default defineBackground(() => {
       return true;
     }
 
-    // Return all cached tab thumbnails
+    // Return all cached tab thumbnails. Captures happen BEFORE the HUD opens
+    // (in the toggle handler) so the cache is already fresh here.
     if (message.type === 'get-all-thumbnails') {
       sendResponse({ thumbnails: Object.fromEntries(tabThumbnails) });
-      return true;
     }
 
     // Quick-switch: toggle between last two tabs
@@ -1083,7 +1066,7 @@ export default defineBackground(() => {
             ? '\n\nWindows: ' + windows.map((w) => `[win:${w.windowId}] (${w.tabCount} tabs${w.activeTabTitle ? `, active: "${w.activeTabTitle}"` : ''})`).join(', ')
             : '';
 
-          const systemPrompt = `You are a browser tab manager AI. The user has these open browser tabs:\n${tabListString}${groupListString}${windowListString}\n\nRespond ONLY with a JSON object with this exact structure: {"message": "short friendly confirmation max 15 words", "actions": [...]}\n\nAvailable action types:\n- {"type":"group-tabs","tabIds":[number],"title":"string","color":"blue|cyan|green|yellow|orange|red|pink|purple|grey"} // groups EXISTING tabs\n- {"type":"open-urls-in-group","urls":["string"],"title":"string","color":"blue|cyan|green|yellow|orange|red|pink|purple|grey"} // opens NEW URLs and groups them\n- {"type":"close-tab","tabId":number}\n- {"type":"close-tabs","tabIds":[number]}\n- {"type":"close-by-domain","domain":"string","keepTabId":number|null} // closes all tabs from a domain; set keepTabId to spare one\n- {"type":"open-url","url":"string"} // opens a single new tab\n- {"type":"pin-tab","tabId":number,"pinned":boolean}\n- {"type":"mute-tab","tabId":number,"muted":boolean}\n- {"type":"bookmark-tab","tabId":number,"folder":"string (optional)"}\n- {"type":"duplicate-tab","tabId":number}\n- {"type":"switch-tab","tabId":number}\n- {"type":"move-to-new-window","tabId":number}\n- {"type":"reload-tab","tabId":number}\n- {"type":"ungroup-tabs","tabIds":[number]}\n- {"type":"rename-group","groupId":number,"title":"string (optional)","color":"blue|cyan|green|yellow|orange|red|pink|purple|grey (optional)"} // use exact groupId from the group list above\n- {"type":"split-view","tabId1":number,"tabId2":number}\n- {"type":"merge-windows"}\n- {"type":"focus-window","windowId":number} // bring a window to front; use exact windowId from the window list above\n- {"type":"discard-tabs","tabIds":[number]} // suspend/hibernate tabs to free memory without closing them\n- {"type":"reopen-last-closed"}\n- {"type":"create-workspace","name":"string"}\n\nIMPORTANT RULES:\n1. When user asks to open NEW URLs and group them, use open-urls-in-group (NOT open-url + group-tabs).\n2. Use group-tabs only to group tabs that already exist in the tab list above.\n3. Use create-workspace (NOT group-tabs) when user wants to save a workspace.\n4. Use discard-tabs (NOT close-tabs) when user asks to free memory, suspend, or hibernate tabs.\n5. Use rename-group with the exact groupId from the group list. Include title and/or color as needed.\n6. Use focus-window with the exact windowId from the window list.\n7. Use close-by-domain for "close all [site] tabs" requests.\n8. Use exact tabIds from the tab list. Add https:// to URLs if missing.\n9. Return empty actions array if nothing to do.\n\nURL INTELLIGENCE RULES (critical — follow these carefully):\n10. When asked to open/find specific content, ALWAYS construct the most direct URL possible — do NOT default to a Google search.\n    - YouTube video: use https://www.youtube.com/results?search_query=ENCODED+TITLE (URL-encode spaces as +)\n    - Wikipedia article: use https://en.wikipedia.org/wiki/Article_Name\n    - GitHub repo: use https://github.com/owner/repo\n    - npm package: use https://www.npmjs.com/package/package-name\n    - MDN docs: use https://developer.mozilla.org/en-US/docs/Web/...\n    - Reddit: use https://www.reddit.com/r/subreddit/\n    - Documentation sites: use the official docs URL (e.g. https://react.dev, https://docs.python.org)\n    - News article: use the publication's search (e.g. https://www.nytimes.com/search?query=topic)\n    - Any well-known site: go directly to that site, not a Google search for it\n11. When user asks to open MULTIPLE tabs on a topic, pick the best real authoritative URLs — not search pages. For example "open 5 tabs about React hooks" → open react.dev/learn/hooks-intro, MDN, a reputable tutorial, etc.\n12. Only use a Google/Bing search URL (https://www.google.com/search?q=...) as a last resort when you truly cannot determine a better URL. When you do, say so in your message (e.g. "I opened a search — I couldn't find the direct link").\n13. Never open a bare domain (e.g. youtube.com) when the user asked for something specific. Always include the search query or path.`;
+          const systemPrompt = `You are a browser tab manager AI. The user has these open browser tabs:\n${tabListString}${groupListString}${windowListString}\n\nRespond ONLY with a JSON object with this exact structure: {"message": "short friendly confirmation max 15 words", "actions": [...]}\n\nAvailable action types:\n- {"type":"group-tabs","tabIds":[number],"title":"string","color":"blue|cyan|green|yellow|orange|red|pink|purple|grey"} // groups EXISTING tabs\n- {"type":"open-urls-in-group","urls":["string"],"title":"string","color":"blue|cyan|green|yellow|orange|red|pink|purple|grey"} // opens NEW URLs and groups them\n- {"type":"close-tab","tabId":number}\n- {"type":"close-tabs","tabIds":[number]}\n- {"type":"close-by-domain","domain":"string","keepTabId":number|null} // closes all tabs from a domain; set keepTabId to spare one\n- {"type":"open-url","url":"string"} // opens a single new tab\n- {"type":"pin-tab","tabId":number,"pinned":boolean}\n- {"type":"mute-tab","tabId":number,"muted":boolean}\n- {"type":"bookmark-tab","tabId":number,"folder":"string (optional)"}\n- {"type":"duplicate-tab","tabId":number}\n- {"type":"switch-tab","tabId":number}\n- {"type":"move-to-new-window","tabId":number}\n- {"type":"reload-tab","tabId":number}\n- {"type":"ungroup-tabs","tabIds":[number]}\n- {"type":"rename-group","groupId":number,"title":"string (optional)","color":"blue|cyan|green|yellow|orange|red|pink|purple|grey (optional)"} // use exact groupId from the group list above\n- {"type":"split-view","tabId1":number,"tabId2":number}\n- {"type":"merge-windows"}\n- {"type":"focus-window","windowId":number} // bring a window to front; use exact windowId from the window list above\n- {"type":"discard-tabs","tabIds":[number]} // suspend/hibernate tabs to free memory without closing them\n- {"type":"reopen-last-closed"}\n- {"type":"create-workspace","name":"string"}\n\nIMPORTANT RULES:\n1. When user asks to open NEW URLs and group them, use open-urls-in-group (NOT open-url + group-tabs).\n2. Use group-tabs only to group tabs that already exist in the tab list above.\n3. Use create-workspace (NOT group-tabs) when user wants to save a workspace.\n4. Use discard-tabs (NOT close-tabs) when user asks to free memory, suspend, or hibernate tabs.\n5. Use rename-group with the exact groupId from the group list. Include title and/or color as needed.\n6. Use focus-window with the exact windowId from the window list.\n7. Use close-by-domain for "close all [site] tabs" requests.\n8. Use exact tabIds from the tab list. Add https:// to URLs if missing.\n9. Return empty actions array ONLY if the request is about existing tabs and nothing to do. NEVER return empty actions if user asks to open, find, navigate to, or search for something.\n\nURL CONSTRUCTION RULES (critical — must follow exactly):\n10. ALWAYS open something when the user asks to find/open/navigate/search. Never refuse by returning empty actions. URL-encode all queries: spaces→+, apostrophe→%27, &→%26, #→%23. Never include raw spaces in URLs.\n\nVIDEO & STREAMING:\n- YouTube video/search: https://www.youtube.com/results?search_query=query+here\n- YouTube channel (known handle): https://www.youtube.com/@Handle — e.g. MrBeast→@MrBeast, Veritasium→@veritasium, Linus Tech Tips→@LinusTechTips\n- YouTube channel (unknown handle): https://www.youtube.com/results?search_query=Channel+Name+channel\n- YouTube playlist search: https://www.youtube.com/results?search_query=query&sp=EgIQAw%3D%3D\n- Twitch streamer: https://www.twitch.tv/streamername (lowercase, no spaces)\n- Netflix search: https://www.netflix.com/search?q=show+name\n- Prime Video search: https://www.amazon.com/s?k=query&i=instant-video\n- Disney+ search: https://www.disneyplus.com/search/query\n- Crunchyroll search: https://www.crunchyroll.com/search?q=query\n\nMUSIC:\n- Spotify search (songs/artists/albums): https://open.spotify.com/search/query+here\n- Spotify specific artist (known): https://open.spotify.com/search/Artist+Name/artists\n- SoundCloud search: https://soundcloud.com/search?q=query\n- Apple Music search: https://music.apple.com/search?term=query\n\nLOCAL & MAPS:\n- ANY local business, restaurant, place, or "near me" / "nearby" / "in [city]" query: ALWAYS use Google Maps with ?q= format (NEVER use path-style maps/search/... — it 404s)\n  Format: https://www.google.com/maps/search/?q=query+words+here\n  Examples: "sushi near me" → https://www.google.com/maps/search/?q=sushi+near+me\n           "fine dining near University of Waterloo" → https://www.google.com/maps/search/?q=fine+dining+near+University+of+Waterloo\n           "Starbucks in Toronto" → https://www.google.com/maps/search/?q=Starbucks+Toronto\n- Directions: https://www.google.com/maps/dir/?api=1&origin=From&destination=To\n- Yelp local search: https://www.yelp.com/search?find_desc=query&find_loc=city\n\nSHOPPING:\n- Amazon product search: https://www.amazon.com/s?k=product+name\n- eBay search: https://www.ebay.com/sch/i.html?_nkw=query\n- Etsy search: https://www.etsy.com/search?q=query\n- Best Buy search: https://www.bestbuy.com/site/searchpage.jsp?st=query\n\nSOCIAL MEDIA:\n- Twitter/X profile (known username): https://x.com/username | search: https://x.com/search?q=query\n- Instagram profile (known handle): https://www.instagram.com/handle/ | search: https://www.instagram.com/explore/tags/query/\n- TikTok profile (known handle): https://www.tiktok.com/@handle | search: https://www.tiktok.com/search?q=query\n- LinkedIn person/company: https://www.linkedin.com/search/results/all/?keywords=name\n- Reddit subreddit: https://www.reddit.com/r/subredditname/ | search: https://www.reddit.com/search/?q=query\n\nFINANCE & STOCKS:\n- Stock price (ticker known): https://finance.yahoo.com/quote/TICKER — e.g. Apple→AAPL, Tesla→TSLA, Google→GOOGL\n- Crypto price: https://www.coingecko.com/en/search?query=coin+name — e.g. Bitcoin, Ethereum, Solana\n- General finance search: https://finance.yahoo.com/lookup?s=query\n\nNEWS & MEDIA:\n- Google News topic: https://news.google.com/search?q=topic\n- BBC search: https://www.bbc.com/search?q=topic\n- CNN search: https://www.cnn.com/search?q=topic\n- Reuters search: https://www.reuters.com/search/news?blob=topic\n- NYT search: https://www.nytimes.com/search?query=topic\n\nWEATHER:\n- Weather for any city: https://www.google.com/search?q=weather+in+City+Name\n- e.g. "weather in Tokyo" → https://www.google.com/search?q=weather+in+Tokyo\n\nSPORTS:\n- Live scores / schedule: https://www.google.com/search?q=sport+or+team+name+scores\n- ESPN team/player: https://www.espn.com/search/results?q=query\n- NBA: https://www.nba.com/games | NFL: https://www.nfl.com/scores/ | Premier League: https://www.premierleague.com/\n\nENTERTAINMENT:\n- Movie/show info: https://www.imdb.com/find?q=title+name\n- Rotten Tomatoes: https://www.rottentomatoes.com/search?search=query\n- Game on Steam: https://store.steampowered.com/search/?term=game+name\n- Metacritic: https://www.metacritic.com/search/query/\n\nTRAVEL:\n- Flights: https://www.google.com/flights?q=flights+from+Origin+to+Destination\n- Hotels: https://www.booking.com/search.html?ss=city+name\n- Airbnb: https://www.airbnb.com/s/City--Country/homes\n\nJOBS:\n- LinkedIn jobs: https://www.linkedin.com/jobs/search/?keywords=job+title&location=city\n- Indeed: https://www.indeed.com/jobs?q=job+title&l=location\n\nEVENTS & TICKETS:\n- Ticketmaster: https://www.ticketmaster.com/search?q=event+name\n- StubHub: https://www.stubhub.com/find/s/?q=event\n- Eventbrite: https://www.eventbrite.com/d/online/event+name/\n\nDEVELOPER / TECH:\n- GitHub repo (known): https://github.com/owner/repo | search: https://github.com/search?q=query\n- npm package: https://www.npmjs.com/package/name\n- PyPI package: https://pypi.org/project/name/\n- MDN docs: https://developer.mozilla.org/en-US/search?q=query\n- Stack Overflow: https://stackoverflow.com/search?q=query\n- Docker Hub: https://hub.docker.com/search?q=query\n- Official docs: react.dev, docs.python.org, vuejs.org, angular.io, docs.rs, go.dev/doc\n\nACADEMIC:\n- Google Scholar: https://scholar.google.com/scholar?q=topic\n- arXiv: https://arxiv.org/search/?query=topic&searchtype=all\n- PubMed: https://pubmed.ncbi.nlm.nih.gov/?term=query\n\nFOOD & RECIPES:\n- Allrecipes: https://www.allrecipes.com/search?q=recipe+name\n- Google recipe search: https://www.google.com/search?q=recipe+name+recipe\n\nPODCASTS:\n- Spotify podcast search: https://open.spotify.com/search/podcast+name/podcasts\n- Apple Podcasts: https://podcasts.apple.com/search?term=podcast+name\n\nIMAGES:\n- Google Images: https://www.google.com/search?q=query&tbm=isch\n- Unsplash: https://unsplash.com/s/photos/query\n\nWIKIPEDIA: https://en.wikipedia.org/wiki/Topic_Name (capitalize words, spaces→_)\n\nFALLBACK (last resort only — prefer platform-native search above): https://www.google.com/search?q=query\nOnly use Google search when none of the above categories apply AND you cannot determine a platform-native URL. Always prefer opening the right platform over generic Google.`;
 
           const requestBody = {
             model: 'llama-3.3-70b-versatile',
@@ -1136,16 +1119,9 @@ export default defineBackground(() => {
   chrome.tabs.onCreated.addListener(updateBadge);
   chrome.tabs.onRemoved.addListener(updateBadge);
 
-  // Snooze waker - check every minute for tabs to wake
-  chrome.alarms.create('snooze-waker', { periodInMinutes: 1 });
-
   // Tab suspender - check every 5 minutes
   chrome.alarms.create('tab-suspender', { periodInMinutes: 5 });
   chrome.alarms.onAlarm.addListener(async (alarm) => {
-    if (alarm.name === 'snooze-waker') {
-      await wakeExpiredTabs();
-      return;
-    }
     if (alarm.name !== 'tab-suspender') return;
     const settings = await getSettings();
     if (!settings.autoSuspend) return;
@@ -1171,10 +1147,10 @@ export default defineBackground(() => {
 });
 
 async function captureThumbnail(tabId: number, windowId: number) {
-  // Block captures while the HUD is visible OR during its 150ms fade-out animation.
-  // hudHideTime adds a 250ms grace period after any hide event so we never snapshot
+  // Block captures while the HUD is visible OR during its 180ms fade-out animation.
+  // hudHideTime adds a 500ms grace period after any hide event so we never snapshot
   // the overlay while it's still transitioning out.
-  if (hudVisible || Date.now() - hudHideTime < 250) return;
+  if (hudVisible || Date.now() - hudHideTime < 500) return;
   try {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     if (!tab || !canSendMessage(tab.url)) return;
@@ -1183,6 +1159,21 @@ async function captureThumbnail(tabId: number, windowId: number) {
     if (tabThumbnails.size > 40) tabThumbnails.delete(tabThumbnails.keys().next().value!);
     persistThumbnails();
   } catch { /* capture may fail on restricted pages */ }
+}
+
+// Capture the active tab in every open window. Used on startup and before
+// the HUD opens so that thumbnails are available immediately for all windows.
+async function captureAllWindowsActiveTabs() {
+  try {
+    const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+    await Promise.all(windows.map(async (win) => {
+      if (!win.id) return;
+      const [active] = await chrome.tabs.query({ active: true, windowId: win.id });
+      if (active?.id && canSendMessage(active.url)) {
+        await captureThumbnail(active.id, win.id);
+      }
+    }));
+  } catch { /* windows/tabs may be unavailable */ }
 }
 
 // Check if we can send messages to a tab (content scripts can't run on these URLs)

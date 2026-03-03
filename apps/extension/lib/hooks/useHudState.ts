@@ -63,8 +63,6 @@ export interface HudState {
   setNotesMap: Dispatch<SetStateAction<Map<string, string>>>;
 
   // UI state
-  showCheatSheet: boolean;
-  setShowCheatSheet: Dispatch<SetStateAction<boolean>>;
   undoToast: { message: string } | null;
   setUndoToast: Dispatch<SetStateAction<{ message: string } | null>>;
 
@@ -88,6 +86,10 @@ export interface HudState {
   thumbnails: Map<number, string>;
   setThumbnails: Dispatch<SetStateAction<Map<number, string>>>;
 
+  // Closing animation
+  closingTabIds: Set<number>;
+  setClosingTabIds: Dispatch<SetStateAction<Set<number>>>;
+
   // Fetch
   fetchTabs: () => Promise<void>;
   fetchRecentTabs: () => Promise<void>;
@@ -110,29 +112,30 @@ export function useHudState(): HudState {
   const [frecencyScores, setFrecencyScores] = useState<Map<string, number>>(new Map());
   const [bookmarkedUrls, setBookmarkedUrls] = useState<Set<string>>(new Set());
   const [notesMap, setNotesMap] = useState<Map<string, string>>(new Map());
-  const [showCheatSheet, setShowCheatSheet] = useState(false);
   const [undoToast, setUndoToast] = useState<{ message: string } | null>(null);
   const [otherWindows, setOtherWindows] = useState<OtherWindow[]>([]);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tabId: number } | null>(null);
   const [thumbnails, setThumbnails] = useState<Map<number, string>>(new Map());
   const [groupFilter, setGroupFilter] = useState<Set<number>>(new Set());
+  const [closingTabIds, setClosingTabIds] = useState<Set<number>>(new Set());
   const pendingExtensionCloseIdsRef = useRef<Set<number>>(new Set());
 
   const hide = useCallback(() => {
     setAnimatingIn(false);
-    setShowCheatSheet(false);
     setContextMenu(null);
     setUndoToast(null);
-    // Wait for the 150ms CSS fade-out to finish before hiding the DOM and notifying
-    // the background. This ensures the background's capture grace period starts only
-    // after the overlay is fully gone, preventing thumbnails from showing the HUD.
+    // Notify background IMMEDIATELY so the capture grace period starts at the
+    // very beginning of the fade-out — prevents captureVisibleTab from ever
+    // seeing the overlay, even during the 180ms CSS opacity transition.
+    chrome.runtime.sendMessage({ type: 'hud-closed' }).catch(() => {});
+    // Wait for the CSS fade-out to finish before removing the DOM
     setTimeout(() => {
       setVisible(false);
       setQuery('');
       setSelectedIndex(0);
       setSelectedTabs(new Set());
       setGroupFilter(new Set());
-      chrome.runtime.sendMessage({ type: 'hud-closed' }).catch(() => {});
+      setClosingTabIds(new Set());
     }, 150);
   }, []);
 
@@ -223,9 +226,9 @@ export function useHudState(): HudState {
     sortMode, setSortMode, frecencyScores, setFrecencyScores,
     bookmarkedUrls, setBookmarkedUrls,
     notesMap, setNotesMap,
-    showCheatSheet, setShowCheatSheet,
     undoToast, setUndoToast,
     groupFilter, setGroupFilter,
+    closingTabIds, setClosingTabIds,
     contextMenu, setContextMenu,
     thumbnails, setThumbnails,
     displayTabs, duplicateMap, duplicateUrls, duplicateCount,

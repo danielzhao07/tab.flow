@@ -1,7 +1,8 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import type { TabInfo } from '@/lib/types';
 import { GridCard } from './GridCard';
 import type { TabActions } from '@/lib/hooks/useTabActions';
+import type { ContextMenuItem } from './ContextMenu';
 
 // Chrome's actual muted/pastel group colors
 const GROUP_COLORS: Record<string, string> = {
@@ -20,6 +21,8 @@ interface TabGridProps {
   actions: TabActions;
   onColsComputed?: (cols: number) => void;
   thumbnails?: Map<number, string>;
+  closingTabIds?: Set<number>;
+  onContextMenuOpen?: (x: number, y: number, items: ContextMenuItem[]) => void;
 }
 
 const FOLDER_TAB_H_DEFAULT = 26;
@@ -27,12 +30,28 @@ const FOLDER_TAB_H_COMPACT  = 18;
 
 export function TabGrid({
   tabs, selectedIndex, selectedTabs, bookmarkedUrls, duplicateUrls,
-  notesMap, actions, onColsComputed, thumbnails,
+  notesMap, actions, onColsComputed, thumbnails, closingTabIds, onContextMenuOpen,
 }: TabGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragFromRef = useRef<number | null>(null);
-  const [containerSize, setContainerSize] = useState({ w: 800, h: 500 });
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
+  // Measure immediately on mount (before paint) to avoid layout flash.
+  // Falls back to rAF in case the flex parent hasn't been sized yet on the first commit.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0) {
+      setContainerSize({ w: rect.width, h: rect.height });
+      return;
+    }
+    const id = requestAnimationFrame(() => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0) setContainerSize({ w: r.width, h: r.height });
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -118,9 +137,14 @@ export function TabGrid({
   // Report computed cols to parent for keyboard navigation sync
   useEffect(() => { onColsComputed?.(cols); }, [cols, onColsComputed]);
 
+  // Don't render grid until container is measured — prevents layout flash on first open
+  if (containerSize.w === 0) {
+    return <div ref={containerRef} className="w-full h-full" />;
+  }
+
   if (tabs.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-white/25">
+      <div ref={containerRef} className="w-full h-full flex-1 flex flex-col items-center justify-center text-white/25">
         <svg className="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
@@ -209,7 +233,10 @@ export function TabGrid({
 
   // Reusable card renderer; groupColor applies a per-card colored outline
   const renderCard = ({ tab, flatIndex: fi }: { tab: TabInfo; flatIndex: number }, groupColor?: string) => {
-    const dragHandlers = {
+    const isClosing = closingTabIds?.has(tab.tabId) ?? false;
+    const isCardSelected = fi === selectedIndex;
+
+    const dragHandlers = isClosing ? {} : {
       draggable: true as const,
       onDragStart: () => { dragFromRef.current = fi; },
       onDragEnd: () => { dragFromRef.current = null; },
@@ -227,7 +254,7 @@ export function TabGrid({
       <GridCard
         tab={tab}
         index={fi}
-        isSelected={fi === selectedIndex}
+        isSelected={isCardSelected && !isClosing}
         isMultiSelected={selectedTabs.has(tab.tabId)}
         isBookmarked={bookmarkedUrls.has(tab.url)}
         isDuplicate={duplicateUrls.has(tab.url)}
@@ -256,25 +283,37 @@ export function TabGrid({
         onReloadSelected={actions.reloadSelectedTabs}
         hasGroupedInSelection={hasGroupedInSelection}
         animDelay={Math.min(fi * 12, 120)}
+        onContextMenuOpen={onContextMenuOpen}
       />
     );
 
+    // Shared closing styles — card fades out and scales down in place
+    // (keeps its layout slot so surrounding cards don't move during the animation)
+    const closingStyle = isClosing ? {
+      opacity: 0,
+      transform: 'scale(0.78)',
+      pointerEvents: 'none' as const,
+    } : {};
+
     if (tab.isActive) {
-      // Same approach as ai-glow-btn: oversized 200% spinner clipped by overflow:hidden,
-      // explicit pixel inner dimensions create the border gap on all 4 sides.
       return (
         <div
           key={tab.tabId}
           className="group"
           style={{
             width: cardW, height: cardH, flexShrink: 0,
-            transition: 'width 180ms ease, height 180ms ease',
+            transition: isClosing
+              ? 'opacity 300ms ease-out, transform 300ms cubic-bezier(0.4,0,0.2,1)'
+              : 'transform 150ms ease-out',
             position: 'relative', borderRadius: 11, overflow: 'hidden',
             padding: 2,
+            zIndex: isCardSelected ? 10 : 1,
+            transform: isCardSelected && !isClosing ? 'scale(1.04)' : undefined,
+            ...closingStyle,
           }}
           {...dragHandlers}
         >
-          <div className="tab-glow-spin" />
+          {!isClosing && <div className="tab-glow-spin" />}
           <div style={{
             width: cardW - 4, height: cardH - 4,
             position: 'relative', zIndex: 1,
@@ -293,9 +332,17 @@ export function TabGrid({
         className="group"
         style={{
           width: cardW, height: cardH, flexShrink: 0,
-          transition: 'width 180ms ease, height 180ms ease',
+          transition: isClosing
+            ? 'opacity 300ms ease-out, transform 300ms cubic-bezier(0.4,0,0.2,1)'
+            : 'transform 150ms ease-out',
           borderRadius: 10,
-          boxShadow: groupColor ? `0 0 0 1.5px ${groupColor}99` : undefined,
+          position: 'relative',
+          zIndex: isCardSelected ? 10 : 1,
+          transform: isCardSelected && !isClosing ? 'scale(1.04)' : undefined,
+          // pulsing blue glow for keyboard-selected card (not needed for active tab which has the spin border)
+          animation: isCardSelected && !isClosing ? 'selectedGlow 1.5s ease-in-out infinite' : undefined,
+          boxShadow: isCardSelected ? undefined : groupColor ? `0 0 0 1.5px ${groupColor}99` : undefined,
+          ...closingStyle,
         }}
         {...dragHandlers}
       >

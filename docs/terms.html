@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service — Tab.Flow</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0a0a;
+      --surface: rgba(255,255,255,0.035);
+      --border:  rgba(255,255,255,0.07);
+      --blue:    #3b82f6;
+      --purple:  #a78bfa;
+      --text:    rgba(255,255,255,0.88);
+      --muted:   rgba(255,255,255,0.36);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 16px 24px 80px;
+    }
+
+    /* ── Logo ─────────────────────────────────────────────── */
+    .logo {
+      display: flex;
+      justify-content: center;
+      margin-bottom: -32px;
+    }
+    .logo img {
+      width: 220px;
+      height: 220px;
+      filter: drop-shadow(0 0 24px rgba(59,130,246,0.18));
+    }
+
+    /* ── Title ────────────────────────────────────────────── */
+    .title-block {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: clamp(28px, 5.5vw, 42px);
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 6px;
+      background: linear-gradient(
+        90deg,
+        rgba(255,255,255,0.92) 0%,
+        var(--blue) 40%,
+        var(--purple) 60%,
+        rgba(255,255,255,0.92) 100%
+      );
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 6s ease-in-out infinite;
+      padding-bottom: 4px;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 100% 50%; }
+      50%  { background-position: 0% 50%; }
+      100% { background-position: 100% 50%; }
+    }
+
+    .last-updated {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── Divider ──────────────────────────────────────────── */
+    .rule {
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(59,130,246,0.25) 30%,
+        rgba(167,139,250,0.25) 70%,
+        transparent 100%);
+      margin: 24px 0;
+    }
+
+    /* ── Sections ─────────────────────────────────────────── */
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.93);
+      margin: 32px 0 10px;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.82);
+      margin: 20px 0 6px;
+    }
+
+    p { margin-bottom: 12px; }
+
+    ul, ol {
+      padding-left: 22px;
+      margin: 6px 0 14px;
+    }
+
+    ul { list-style: disc; }
+    ol { list-style: decimal; }
+
+    li {
+      padding: 2px 0;
+      color: rgba(255,255,255,0.72);
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    a:hover { color: #60a5fa; }
+
+    strong {
+      color: rgba(255,255,255,0.90);
+      font-weight: 600;
+    }
+
+    /* ── Highlight box ────────────────────────────────────── */
+    .highlight {
+      margin: 16px 0;
+      padding: 14px 18px;
+      border-radius: 10px;
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(59,130,246,0.15);
+      color: rgba(255,255,255,0.78);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    .page-footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: rgba(255,255,255,0.16);
+      font-size: 12px;
+    }
+    .page-footer a {
+      color: rgba(255,255,255,0.22);
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    .page-footer a:hover { color: var(--muted); }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .page { padding: 12px 18px 60px; }
+      h1 { font-size: 26px; }
+      .logo img { width: 160px; height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Logo -->
+    <div class="logo">
+      <img src="TabFlowV4.png" alt="Tab.Flow" />
+    </div>
+
+    <!-- Title -->
+    <div class="title-block">
+      <h1>Terms of Service</h1>
+      <p class="last-updated">Effective date: March 2, 2026</p>
+    </div>
+
+    <div class="rule"></div>
+
+    <!-- 1 -->
+    <h2>1. Acceptance of Terms</h2>
+    <p>By installing, accessing, or using the Tab.Flow browser extension and any associated cloud services (collectively, the "Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree, do not install or use the Service.</p>
+    <p>We reserve the right to update these Terms at any time. We will notify you of material changes by updating the "Effective date" above. Continued use of the Service after changes constitutes acceptance of the revised Terms.</p>
+
+    <!-- 2 -->
+    <h2>2. Description of Service</h2>
+    <p>Tab.Flow is a browser extension that provides a visual tab management overlay, including features such as:</p>
+    <ul>
+      <li>A searchable grid view of all open tabs</li>
+      <li>Tab grouping, snoozing, and recently-closed tab recovery</li>
+      <li>Workspace saving, bookmarking, and note-taking</li>
+      <li>AI-powered tab assistant</li>
+      <li>Optional cloud sync across devices (requires account)</li>
+    </ul>
+    <p>The core extension functionality works entirely offline and locally within your browser. Cloud features require creating an optional account.</p>
+
+    <!-- 3 -->
+    <h2>3. Eligibility</h2>
+    <p>You must be at least 13 years of age to use the Service. By using the Service, you represent and warrant that you meet this requirement. If you are under 18, you represent that you have your parent's or guardian's permission to use the Service.</p>
+
+    <!-- 4 -->
+    <h2>4. Account Registration</h2>
+    <p>Certain features (cloud sync, cross-device workspaces) require you to create an account. When you register, you agree to:</p>
+    <ul>
+      <li>Provide accurate and complete information</li>
+      <li>Keep your login credentials secure and confidential</li>
+      <li>Notify us immediately of any unauthorized use of your account</li>
+    </ul>
+    <p>You are responsible for all activity that occurs under your account. We reserve the right to suspend or terminate accounts that violate these Terms.</p>
+
+    <!-- 5 -->
+    <h2>5. Acceptable Use</h2>
+    <p>You agree not to:</p>
+    <ul>
+      <li>Use the Service for any unlawful purpose or in violation of any applicable law</li>
+      <li>Reverse engineer, decompile, or disassemble the Service, except as permitted by law</li>
+      <li>Attempt to gain unauthorized access to our servers, systems, or other users' accounts</li>
+      <li>Interfere with or disrupt the integrity or performance of the Service</li>
+      <li>Use automated means to access the Service in a manner that exceeds reasonable use</li>
+      <li>Transmit any malware, viruses, or harmful code through the Service</li>
+      <li>Use the AI assistant to generate content that is illegal, harmful, or violates third-party rights</li>
+    </ul>
+
+    <!-- 6 -->
+    <h2>6. Intellectual Property</h2>
+    <p>The Service, including all code, design, graphics, logos, and documentation, is owned by Tab.Flow and protected by copyright and other intellectual property laws. These Terms do not grant you any rights to our trademarks, logos, or brand features.</p>
+    <p>You retain ownership of any content you create or store through the Service (e.g., workspaces, bookmarks, notes). By using the cloud sync feature, you grant us a limited license to store and transmit your content solely for the purpose of providing the Service to you.</p>
+
+    <!-- 7 -->
+    <h2>7. AI Assistant</h2>
+    <p>The AI tab assistant is powered by third-party AI services (Groq). When you use the AI assistant:</p>
+    <ul>
+      <li>Your query and open tab titles are sent to Groq's API to generate responses</li>
+      <li>AI-generated responses are provided "as is" and may not always be accurate</li>
+      <li>You should not rely on AI responses for critical decisions</li>
+      <li>We are not responsible for the content of AI-generated responses</li>
+    </ul>
+    <p>Use of the AI assistant is also subject to <a href="https://groq.com/terms-of-use/" target="_blank" rel="noopener">Groq's Terms of Use</a>.</p>
+
+    <!-- 8 -->
+    <h2>8. Third-Party Services</h2>
+    <p>The Service integrates with third-party services including AWS Cognito, AWS S3, Neon PostgreSQL, and Groq. Your use of these services through Tab.Flow is subject to their respective terms and privacy policies. We are not responsible for the practices or availability of third-party services.</p>
+
+    <!-- 9 -->
+    <h2>9. Privacy</h2>
+    <p>Your use of the Service is also governed by our <a href="privacy.html">Privacy Policy</a>, which describes how we collect, use, and protect your information. By using the Service, you consent to our data practices as described in the Privacy Policy.</p>
+
+    <!-- 10 -->
+    <h2>10. Disclaimer of Warranties</h2>
+    <p>The Service is provided on an <strong>"as is"</strong> and <strong>"as available"</strong> basis without warranties of any kind, whether express or implied, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</p>
+    <p>We do not warrant that:</p>
+    <ul>
+      <li>The Service will be uninterrupted, secure, or error-free</li>
+      <li>Any defects will be corrected in a timely manner</li>
+      <li>The Service will meet your specific requirements</li>
+      <li>Data stored through the Service will never be lost or corrupted</li>
+    </ul>
+
+    <!-- 11 -->
+    <h2>11. Limitation of Liability</h2>
+    <p>To the maximum extent permitted by applicable law, Tab.Flow and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of data, loss of profits, or business interruption, arising out of or related to your use of the Service.</p>
+    <p>Our total liability for any claim arising from or related to these Terms or the Service shall not exceed the amount you paid us in the 12 months preceding the claim, or $10 USD, whichever is greater.</p>
+
+    <!-- 12 -->
+    <h2>12. Indemnification</h2>
+    <p>You agree to indemnify, defend, and hold harmless Tab.Flow and its developers from any claims, liabilities, damages, losses, and expenses (including reasonable legal fees) arising from your use of the Service, your violation of these Terms, or your violation of any rights of a third party.</p>
+
+    <!-- 13 -->
+    <h2>13. Termination</h2>
+    <p>You may stop using the Service at any time by uninstalling the extension. If you have a cloud account, you may request deletion of your account and data by contacting us.</p>
+    <p>We reserve the right to suspend or terminate your access to the Service at any time, with or without notice, for conduct that we believe violates these Terms or is harmful to other users, us, or third parties.</p>
+    <p>Upon termination, your right to use the Service ceases immediately. Sections 6, 10, 11, 12, and 15 survive termination.</p>
+
+    <!-- 14 -->
+    <h2>14. Changes to the Service</h2>
+    <p>We reserve the right to modify, suspend, or discontinue the Service (or any part thereof) at any time, with or without notice. We shall not be liable to you or any third party for any modification, suspension, or discontinuation of the Service.</p>
+
+    <!-- 15 -->
+    <h2>15. Governing Law</h2>
+    <p>These Terms shall be governed by and construed in accordance with the laws of the Province of Ontario, Canada, without regard to its conflict of law provisions. Any disputes arising under these Terms shall be subject to the exclusive jurisdiction of the courts located in Ontario, Canada.</p>
+
+    <!-- 16 -->
+    <h2>16. Severability</h2>
+    <p>If any provision of these Terms is held to be invalid or unenforceable, the remaining provisions shall continue in full force and effect. The invalid or unenforceable provision shall be modified to the minimum extent necessary to make it valid and enforceable.</p>
+
+    <!-- 17 -->
+    <h2>17. Entire Agreement</h2>
+    <p>These Terms, together with the <a href="privacy.html">Privacy Policy</a>, constitute the entire agreement between you and Tab.Flow regarding the Service, and supersede all prior agreements or understandings.</p>
+
+    <!-- 18 -->
+    <h2>18. Contact Us</h2>
+    <p>If you have any questions about these Terms of Service, please contact us at:</p>
+    <p><strong>Email:</strong> <a href="mailto:daniel.zhao2007@gmail.com">daniel.zhao2007@gmail.com</a></p>
+    <p><strong>GitHub:</strong> <a href="https://github.com/danielzhao07/TabFlow/issues" target="_blank" rel="noopener">github.com/danielzhao07/TabFlow/issues</a></p>
+
+    <footer class="page-footer">
+      <a href="privacy.html">Privacy Policy</a>
+      &nbsp;&middot;&nbsp;
+      Tab.Flow &copy; 2026
+    </footer>
+
+  </div>
+</body>
+</html>
