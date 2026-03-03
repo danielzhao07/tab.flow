@@ -20,7 +20,6 @@ export interface HudState {
   setVisible: Dispatch<SetStateAction<boolean>>;
   animatingIn: boolean;
   setAnimatingIn: Dispatch<SetStateAction<boolean>>;
-  lastToggleRef: React.MutableRefObject<number>;
   hide: () => void;
 
   // Tabs
@@ -117,7 +116,6 @@ export function useHudState(): HudState {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tabId: number } | null>(null);
   const [thumbnails, setThumbnails] = useState<Map<number, string>>(new Map());
   const [groupFilter, setGroupFilter] = useState<Set<number>>(new Set());
-  const lastToggleRef = useRef<number>(0);
   const pendingExtensionCloseIdsRef = useRef<Set<number>>(new Set());
 
   const hide = useCallback(() => {
@@ -214,7 +212,7 @@ export function useHudState(): HudState {
     : groupFilteredTabs;
 
   return {
-    visible, setVisible, animatingIn, setAnimatingIn, lastToggleRef, hide,
+    visible, setVisible, animatingIn, setAnimatingIn, hide,
     tabs, setTabs, recentTabs, setRecentTabs,
     query, setQuery, selectedIndex, setSelectedIndex,
     settings, setSettings,

@@ -68,6 +68,9 @@ let hudVisible = false;
 // Timestamp of the last HUD hide — captures are blocked for 250ms after hiding
 // to cover the 150ms CSS fade-out animation and any async timing slack.
 let hudHideTime = 0;
+// Double-press (Alt+Q+Q) detection — tracked in background for zero-latency timing
+let lastCommandTime = 0;
+let pendingToggleId = 0;
 
 // Analytics: track focus time per tab
 let activeTabFocusStart = Date.now();
@@ -270,18 +273,53 @@ export default defineBackground(() => {
   // Handle keyboard shortcut
   chrome.commands.onCommand.addListener(async (command) => {
     if (command === 'toggle-hud') {
+      const now = Date.now();
+      const isDoublePress = now - lastCommandTime < 400;
+      lastCommandTime = now;
+      const myToggleId = ++pendingToggleId;
+
+      if (isDoublePress) {
+        // Double-press (Alt+Q+Q): quick-switch to the previous tab immediately.
+        // Cancel any in-flight single-press toggle by bumping pendingToggleId.
+        pendingToggleId++;
+        const [mruList, activeTabs] = await Promise.all([
+          getMRUList(),
+          chrome.tabs.query({ active: true, currentWindow: true }),
+        ]);
+        const activeTabId = activeTabs[0]?.id;
+        // Find the most recently used tab that isn't the current one
+        const prev = mruList.find((t) => t.tabId !== activeTabId);
+        if (prev) {
+          chrome.tabs.update(prev.tabId, { active: true }).catch(() => {});
+          chrome.windows.update(prev.windowId, { focused: true }).catch(() => {});
+        }
+        // Close the HUD on the current tab if it's open
+        if (hudVisible && activeTabId) {
+          hudVisible = false;
+          hudHideTime = Date.now();
+          chrome.tabs.sendMessage(activeTabId, { type: 'hide-hud' }).catch(() => {});
+        }
+        return;
+      }
+
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      // Abort if a double-press arrived while we were awaiting the tab query
+      if (pendingToggleId !== myToggleId) return;
 
       // If the active tab is a restricted page (new tab, chrome://, etc.),
       // switch to the most-recently-used real tab first, then show the HUD there.
       if (!canSendMessage(activeTab?.url)) {
         const mruList = await getMRUList();
+        if (pendingToggleId !== myToggleId) return;
         const realTab = mruList.find((t) => canSendMessage(t.url));
         if (!realTab) return;
         await chrome.tabs.update(realTab.tabId, { active: true }).catch(() => {});
         await chrome.windows.update(realTab.windowId, { focused: true }).catch(() => {});
+        if (pendingToggleId !== myToggleId) return;
         // Brief pause so Chrome has time to activate the tab before we send the message
         setTimeout(() => {
+          if (pendingToggleId !== myToggleId) return;
           hudVisible = true;
           chrome.tabs.sendMessage(realTab.tabId, { type: 'toggle-hud' }).catch(() => {
             hudVisible = false;
@@ -294,6 +332,7 @@ export default defineBackground(() => {
         // Capture BEFORE showing HUD so we get the actual page, not the overlay
         if (!hudVisible) {
           await captureThumbnail(activeTab.id, activeTab.windowId!);
+          if (pendingToggleId !== myToggleId) return; // double-press arrived during capture
         }
         const wasVisible = hudVisible;
         hudVisible = !hudVisible;

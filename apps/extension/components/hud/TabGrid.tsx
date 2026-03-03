@@ -18,19 +18,21 @@ interface TabGridProps {
   duplicateUrls: Set<string>;
   notesMap: Map<string, string>;
   actions: TabActions;
-  cols: number;
+  onColsComputed?: (cols: number) => void;
   thumbnails?: Map<number, string>;
 }
 
-const FOLDER_TAB_H = 26; // height of the label that sticks up above the group outline
+const FOLDER_TAB_H_DEFAULT = 26;
+const FOLDER_TAB_H_COMPACT  = 18;
 
 export function TabGrid({
   tabs, selectedIndex, selectedTabs, bookmarkedUrls, duplicateUrls,
-  notesMap, actions, thumbnails,
+  notesMap, actions, onColsComputed, thumbnails,
 }: TabGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragFromRef = useRef<number | null>(null);
   const [containerSize, setContainerSize] = useState({ w: 800, h: 500 });
+
 
   useEffect(() => {
     const el = containerRef.current;
@@ -42,17 +44,6 @@ export function TabGrid({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  if (tabs.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-white/25">
-        <svg className="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <p className="text-sm">No tabs found</p>
-      </div>
-    );
-  }
 
   // Sort: grouped tabs first (by group order), ungrouped last
   const grouped = tabs.filter((t) => t.groupId);
@@ -67,46 +58,95 @@ export function TabGrid({
   ];
 
   const N = sortedTabs.length;
-  const pad = 16;
-  const gap = 8;
+  const isCompact = N > 20;
+  const pad = isCompact ? 8 : 16;
+  const gap = isCompact ? 4 : 8;
+  const FOLDER_TAB_H = isCompact ? FOLDER_TAB_H_COMPACT : FOLDER_TAB_H_DEFAULT;
+  const MIN_CARD_H = isCompact ? 36 : 52;
+  const MIN_CARD_W = 120;
+  const GROUP_PAD = 8; // 4px padding top + bottom inside each group segment container
 
-  // Balanced cols lookup
+  // Balanced cols lookup for small tab counts
   const COLS_LOOKUP = [0, 1, 2, 3, 2, 3, 3, 4, 4, 3, 5, 4, 4];
-  const cols = Math.max(1, Math.min(N, N <= 12
-    ? (COLS_LOOKUP[N] ?? Math.ceil(Math.sqrt(N)))
-    : Math.min(6, Math.ceil(Math.sqrt(N)))));
-  const rows = Math.ceil(N / cols);
 
-  const cardW = Math.min(300, Math.max(130, Math.floor(
+  // Max cols that still give each card at least MIN_CARD_W
+  const maxColsByWidth = Math.max(1, Math.floor((containerSize.w - pad * 2 + gap) / (MIN_CARD_W + gap)));
+
+  // Aesthetic starting point
+  const baseCols = N <= 12
+    ? (COLS_LOOKUP[N] ?? Math.ceil(Math.sqrt(N)))
+    : Math.ceil(Math.sqrt(N));
+
+  // Compute group-row overhead for a given column count
+  const computeOverhead = (c: number) => {
+    const r = Math.ceil(N / c);
+    const seen = new Set<number>();
+    let firstRows = 0;
+    let anyRows = 0;
+    for (let row = 0; row < r; row++) {
+      const start = row * c;
+      const end = Math.min(start + c, N);
+      let hasFirst = false;
+      let hasAny = false;
+      for (let i = start; i < end; i++) {
+        const gid = sortedTabs[i].groupId;
+        if (gid) {
+          hasAny = true;
+          if (!seen.has(gid)) { seen.add(gid); hasFirst = true; }
+        }
+      }
+      if (hasFirst) firstRows++;
+      if (hasAny) anyRows++;
+    }
+    return { r, firstRows, anyRows };
+  };
+
+  // Find smallest cols >= baseCols that makes every card fit vertically
+  let cols = Math.max(1, Math.min(N, Math.min(maxColsByWidth, baseCols)));
+  let { r: rows, firstRows: groupFirstRowCount, anyRows: groupAnyRowCount } = computeOverhead(cols);
+
+  while (cols < Math.min(N, maxColsByWidth)) {
+    const avail = containerSize.h - pad * 2
+      - groupFirstRowCount * FOLDER_TAB_H
+      - groupAnyRowCount * GROUP_PAD
+      - Math.max(0, rows - 1) * gap;
+    if (rows > 0 && Math.floor(avail / rows) >= MIN_CARD_H) break;
+    cols++;
+    ({ r: rows, firstRows: groupFirstRowCount, anyRows: groupAnyRowCount } = computeOverhead(cols));
+  }
+
+  // Report computed cols to parent for keyboard navigation sync
+  useEffect(() => { onColsComputed?.(cols); }, [cols, onColsComputed]);
+
+  if (tabs.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center text-white/25">
+        <svg className="w-10 h-10 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <p className="text-sm">No tabs found</p>
+      </div>
+    );
+  }
+
+  const cardW = Math.min(300, Math.max(MIN_CARD_W, Math.floor(
     (containerSize.w - pad * 2 - gap * (cols - 1)) / cols
   )));
 
-  // Count rows that will need extra top space for folder tab labels
-  // (any row that contains the first occurrence of a group)
-  // We'll compute this properly during the segmenting pass below.
-  // First pass: figure out how many rows have group-first segments
-  let groupFirstRowCount = 0;
-  {
-    const seen = new Set<number>();
-    for (let r = 0; r < rows; r++) {
-      const start = r * cols;
-      const rowCards = sortedTabs.slice(start, start + cols);
-      let hasFirst = false;
-      let i = 0;
-      while (i < rowCards.length) {
-        const gid = rowCards[i].groupId;
-        if (gid && !seen.has(gid)) { seen.add(gid); hasFirst = true; }
-        i++;
-      }
-      if (hasFirst) groupFirstRowCount++;
-    }
-  }
-
   const availH = containerSize.h - pad * 2
-    - groupFirstRowCount * FOLDER_TAB_H  // extra space above rows with first group appearances
-    - (rows - 1) * gap;
+    - groupFirstRowCount * FOLDER_TAB_H
+    - groupAnyRowCount * GROUP_PAD
+    - Math.max(0, rows - 1) * gap;
   const maxCardH = rows > 0 ? Math.floor(availH / rows) : 120;
-  const cardH = Math.max(80, Math.min(maxCardH, Math.floor(cardW * 9 / 16)));
+  const cardH = Math.max(MIN_CARD_H, Math.min(maxCardH, Math.floor(cardW * 9 / 16)));
+
+  // If the grid is taller than the container, align to top so the first row isn't cut off.
+  // When there's enough room, keep vertical centering for aesthetics.
+  const totalGridH = rows * cardH + (rows - 1) * gap
+    + groupFirstRowCount * FOLDER_TAB_H
+    + groupAnyRowCount * GROUP_PAD
+    + pad * 2;
+  const alignItems = totalGridH >= containerSize.h - 4 ? 'flex-start' : 'center';
 
   // Segment each row into runs of same-group / ungrouped cards
   interface Segment {
@@ -267,8 +307,8 @@ export function TabGrid({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full flex items-center justify-center"
-      style={{ padding: pad, overflow: 'visible' }}
+      className="w-full h-full flex justify-center"
+      style={{ padding: pad, overflow: 'visible', alignItems }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap, alignItems: 'center' }}>
         {rowData.map(({ segments }, rowIdx) => (

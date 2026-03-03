@@ -34,12 +34,9 @@ export function HudOverlay() {
   const [wsRefreshKey, setWsRefreshKey] = useState(0);
   const promptHistoryRef = useRef<string[]>([]);
 
-  // Compute cols: must match TabGrid's internal formula exactly for keyboard nav to be in sync
-  const N = s.displayTabs.length;
-  const COLS_LOOKUP = [0, 1, 2, 3, 2, 3, 3, 4, 4, 3, 5, 4, 4];
-  const cols = Math.max(1, Math.min(N, N <= 12
-    ? (COLS_LOOKUP[N] ?? Math.ceil(Math.sqrt(N)))
-    : Math.min(6, Math.ceil(Math.sqrt(N)))));
+  // TabGrid computes adaptive cols (depends on container size) and reports it back
+  const [cols, setCols] = useState(1);
+  const onColsComputed = useCallback((c: number) => setCols(c), []);
 
   const panelRef = useCallback((node: HTMLDivElement | null) => {
     if (node) {
@@ -73,16 +70,12 @@ export function HudOverlay() {
   // Listen for messages from background
   useEffect(() => {
     const listener = (message: { type: string; tabId?: number; title?: string }) => {
+      if (message.type === 'hide-hud') {
+        s.hide();
+        return;
+      }
+
       if (message.type === 'toggle-hud') {
-        const now = Date.now();
-        const timeSinceLastToggle = now - s.lastToggleRef.current;
-        s.lastToggleRef.current = now;
-
-        if (timeSinceLastToggle < 400) {
-          chrome.runtime.sendMessage({ type: 'quick-switch' });
-          return;
-        }
-
         s.setVisible((prev) => {
           if (!prev) {
             s.fetchTabs();
@@ -246,9 +239,13 @@ export function HudOverlay() {
     setCompletedCount(0);
     setAiQuery('');
     try {
+      // Only send current-window tabs to the agent — prevents it from touching other windows
+      const agentTabs = s.currentWindowId
+        ? s.tabs.filter((t) => t.windowId === s.currentWindowId)
+        : s.tabs;
       const res = await chrome.runtime.sendMessage({
         type: 'ai-agent',
-        payload: { query, tabs: s.tabs, windows: s.otherWindows },
+        payload: { query, tabs: agentTabs, windows: s.otherWindows },
       });
       if (res?.error === 'no-key') {
         setAgentResult({ message: 'Add your Groq API key in settings to use the AI agent.', actions: [] });
@@ -319,20 +316,18 @@ export function HudOverlay() {
           transition: 'opacity 180ms ease-out, transform 180ms ease-out',
         }}
       >
-        {/* Top-left: logo + tab count + analytics */}
-        <div className="absolute top-4 left-4 flex items-center gap-3" style={{ zIndex: 2147483646 }}>
-          <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">TabFlow</span>
-          <span
-            className="text-[10px] text-white/20 px-1.5 py-0.5 rounded-md"
-            style={{ background: 'rgba(255,255,255,0.06)' }}
-          >
-            {s.displayTabs.length}
-          </span>
-          {!s.settings?.hideTodayTabs && <AnalyticsBar tabs={s.tabs} onSwitch={s.hide} />}
-        </div>
-
-        {/* Floating gear button — top-right */}
-        <div className="absolute top-4 right-4" style={{ zIndex: 2147483646 }}>
+        {/* Top bar: logo + tab count + analytics (left) · gear (right) — in flow so grid doesn't overlap */}
+        <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-1" style={{ zIndex: 2147483646 }}>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-semibold text-white/40 tracking-wider uppercase">TabFlow</span>
+            <span
+              className="text-[10px] text-white/20 px-1.5 py-0.5 rounded-md"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
+            >
+              {s.displayTabs.length}
+            </span>
+            {!s.settings?.hideTodayTabs && <AnalyticsBar tabs={s.tabs} onSwitch={s.hide} />}
+          </div>
           <button
             onClick={(e) => { e.stopPropagation(); setShowSettings((p) => !p); }}
             className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
@@ -385,7 +380,7 @@ export function HudOverlay() {
         )}
 
         {/* Tab grid — floats directly on backdrop */}
-        <div className="flex-1 min-h-0 overflow-hidden px-6 pt-4 pb-2">
+        <div className="flex-1 min-h-0 overflow-hidden px-6 pb-2">
           {s.isCommandMode ? (
             <CommandPalette
               query={s.commandQuery}
@@ -401,7 +396,7 @@ export function HudOverlay() {
               duplicateUrls={s.duplicateUrls}
               notesMap={s.notesMap}
               actions={a}
-              cols={cols}
+              onColsComputed={onColsComputed}
               thumbnails={s.thumbnails}
             />
           )}
