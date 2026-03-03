@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tab.Flow — Tab Management, Reimagined</title>
+  <meta name="description" content="A full-screen HUD overlay that replaces Chrome's tab switcher. AI assistant, fuzzy search, smart grouping, keyboard navigation — all free." />
+  <link rel="icon" href="TabFlowV4.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #050508;
+      --bg-2:     #0a0a10;
+      --surface:  rgba(255,255,255,0.04);
+      --border:   rgba(255,255,255,0.08);
+      --blue:     #3b82f6;
+      --purple:   #a78bfa;
+      --green:    #34d399;
+      --text:     rgba(255,255,255,0.90);
+      --text-2:   rgba(255,255,255,0.70);
+      --muted:    rgba(255,255,255,0.40);
+      --nav-h:    64px;
+      --max-w:    1200px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       NAV
+       ═══════════════════════════════════════════════════════ */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    nav.scrolled {
+      background: rgba(5,5,8,0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 var(--border);
+    }
+    .nav-inner {
+      width: 100%;
+      max-width: var(--max-w);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-brand img {
+      width: 36px; height: 36px;
+    }
+    .nav-brand span {
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--text);
+      letter-spacing: -0.03em;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 20px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: box-shadow 0.2s, transform 0.15s;
+    }
+    .nav-cta:hover {
+      box-shadow: 0 4px 20px rgba(59,130,246,0.35);
+      transform: translateY(-1px);
+    }
+    .nav-cta svg { width: 16px; height: 16px; }
+
+    /* ═══════════════════════════════════════════════════════
+       HERO
+       ═══════════════════════════════════════════════════════ */
+    .hero {
+      padding: calc(var(--nav-h) + 80px) 32px 100px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Ambient glow behind hero */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -40%; left: 50%;
+      transform: translateX(-50%);
+      width: 900px; height: 600px;
+      background: radial-gradient(ellipse, rgba(59,130,246,0.10) 0%, rgba(167,139,250,0.06) 40%, transparent 70%);
+      pointer-events: none;
+      filter: blur(60px);
+    }
+
+    .hero-logo {
+      width: 120px; height: 120px;
+      margin: 0 auto 32px;
+      display: block;
+      position: relative;
+      z-index: 1;
+      filter: drop-shadow(0 0 40px rgba(59,130,246,0.25));
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 7vw, 72px);
+      font-weight: 900;
+      letter-spacing: -0.045em;
+      line-height: 1.05;
+      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .hero h1 .accent {
+      background: linear-gradient(120deg, var(--blue) 20%, var(--purple) 80%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: clamp(16px, 2.5vw, 20px);
+      color: var(--text-2);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      position: relative;
+      z-index: 1;
+      line-height: 1.6;
+    }
+
+    .hero-buttons {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 32px;
+      position: relative;
+      z-index: 1;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 36px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: box-shadow 0.25s, transform 0.15s;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 8px 40px rgba(59,130,246,0.4);
+      transform: translateY(-2px);
+    }
+    .btn-primary svg { width: 22px; height: 22px; }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 36px;
+      border-radius: 14px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+    .btn-secondary:hover {
+      border-color: rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.04);
+      transform: translateY(-1px);
+    }
+
+    .hero-proof {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      color: var(--muted);
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+      flex-wrap: wrap;
+    }
+    .hero-proof span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); }
+
+    /* ═══════════════════════════════════════════════════════
+       FEATURES SECTION
+       ═══════════════════════════════════════════════════════ */
+    .features-header {
+      text-align: center;
+      padding: 100px 32px 80px;
+      position: relative;
+    }
+    /* Subtle top arc like Cursorful */
+    .features-header::before {
+      content: '';
+      position: absolute;
+      top: -100px; left: 50%;
+      transform: translateX(-50%);
+      width: 160%;
+      height: 200px;
+      border-radius: 0 0 50% 50%;
+      background: radial-gradient(ellipse at center, rgba(59,130,246,0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .features-label {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 16px;
+    }
+    .features-header h2 {
+      font-size: clamp(32px, 5.5vw, 56px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    /* ── Feature row (alternating) ────────────────────────── */
+    .feature-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      max-width: var(--max-w);
+      margin: 0 auto;
+      padding: 60px 32px;
+    }
+    .feature-row.reverse .feature-text  { order: 1; }
+    .feature-row.reverse .feature-media { order: 0; }
+
+    .feature-text h3 {
+      font-size: clamp(28px, 3.5vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    .feature-text p {
+      font-size: 17px;
+      color: var(--text-2);
+      line-height: 1.7;
+      margin-bottom: 28px;
+      max-width: 480px;
+    }
+    .feature-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .feature-cta:hover {
+      border-color: rgba(59,130,246,0.5);
+      background: rgba(59,130,246,0.06);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(59,130,246,0.1);
+    }
+
+    /* Video/demo placeholder — styled like a browser window */
+    .feature-media {
+      position: relative;
+    }
+    .demo-frame {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.5),
+        0 0 0 1px rgba(255,255,255,0.03);
+      transition: box-shadow 0.3s, transform 0.3s;
+    }
+    .demo-frame:hover {
+      box-shadow:
+        0 25px 70px rgba(0,0,0,0.55),
+        0 0 40px rgba(59,130,246,0.08),
+        0 0 0 1px rgba(255,255,255,0.05);
+      transform: translateY(-4px);
+    }
+    /* Browser chrome bar */
+    .demo-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+    }
+    .demo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .demo-dot.r { background: #ff5f57; }
+    .demo-dot.y { background: #febc2e; }
+    .demo-dot.g { background: #28c840; }
+    .demo-url {
+      flex: 1;
+      margin-left: 8px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'Inter', monospace;
+    }
+
+    /* Placeholder for the actual video/gif */
+    .demo-content {
+      aspect-ratio: 16 / 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background:
+        radial-gradient(ellipse at 30% 40%, rgba(59,130,246,0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(167,139,250,0.05) 0%, transparent 50%),
+        var(--bg-2);
+      position: relative;
+    }
+    /* When video/gif is added, use this */
+    .demo-content img,
+    .demo-content video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .demo-content .placeholder-icon {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .demo-content .placeholder-icon svg {
+      width: 24px; height: 24px;
+      color: var(--muted);
+    }
+    .demo-content .placeholder-label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       FULL-WIDTH FEATURE (like "Available on all platforms")
+       ═══════════════════════════════════════════════════════ */
+    .feature-full {
+      text-align: center;
+      padding: 80px 32px;
+      max-width: var(--max-w);
+      margin: 0 auto;
+    }
+    .feature-full h3 {
+      font-size: clamp(28px, 3.5vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      margin-bottom: 16px;
+    }
+    .feature-full p {
+      font-size: 17px;
+      color: var(--text-2);
+      max-width: 520px;
+      margin: 0 auto 32px;
+    }
+    .platform-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .platform-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .platform-badge svg { width: 18px; height: 18px; color: var(--muted); }
+
+    /* ═══════════════════════════════════════════════════════
+       PRICING (like Cursorful)
+       ═══════════════════════════════════════════════════════ */
+    .pricing {
+      padding: 100px 32px 80px;
+      text-align: center;
+    }
+    .pricing .features-label { margin-bottom: 16px; }
+    .pricing h2 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 900;
+      letter-spacing: -0.035em;
+      margin-bottom: 12px;
+    }
+    .pricing .pricing-sub {
+      color: var(--text-2);
+      font-size: 17px;
+      margin-bottom: 48px;
+    }
+    .pricing-card {
+      max-width: 520px;
+      margin: 0 auto;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 40px 36px;
+      text-align: left;
+    }
+    .pricing-card h3 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .pricing-card .price-tag {
+      font-size: 15px;
+      color: var(--green);
+      font-weight: 600;
+      margin-bottom: 28px;
+    }
+    .pricing-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+    .pricing-features li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--text-2);
+    }
+    .pricing-features li svg {
+      width: 20px; height: 20px;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       FAQ (like Cursorful)
+       ═══════════════════════════════════════════════════════ */
+    .faq {
+      padding: 80px 32px 100px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .faq .features-label { text-align: center; margin-bottom: 16px; }
+    .faq > h2 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 900;
+      letter-spacing: -0.035em;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+    }
+    .faq-q {
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: none;
+      border: none;
+      color: var(--text);
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+    .faq-q svg {
+      width: 20px; height: 20px;
+      flex-shrink: 0;
+      color: var(--muted);
+      transition: transform 0.25s;
+    }
+    .faq-item.open .faq-q svg { transform: rotate(45deg); }
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+    .faq-item.open .faq-a {
+      max-height: 200px;
+      padding-top: 12px;
+    }
+    .faq-a p {
+      color: var(--text-2);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       FOOTER (multi-column like Cursorful)
+       ═══════════════════════════════════════════════════════ */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 56px 32px 40px;
+    }
+    .footer-inner {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 40px;
+    }
+    .footer-brand {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .footer-brand .nav-brand { margin-bottom: 4px; }
+    .footer-brand p {
+      color: var(--muted);
+      font-size: 13px;
+      max-width: 260px;
+    }
+    .footer-col h4 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .footer-col a {
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.15s;
+    }
+    .footer-col a:hover { color: var(--text); }
+    .footer-copy {
+      max-width: var(--max-w);
+      margin: 32px auto 0;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       SCROLL REVEAL ANIMATION
+       ═══════════════════════════════════════════════════════ */
+    .reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1),
+                  transform 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* Stagger children */
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+
+    /* ═══════════════════════════════════════════════════════
+       RESPONSIVE
+       ═══════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .feature-row {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        padding: 40px 24px;
+      }
+      .feature-row .feature-text  { order: 0 !important; }
+      .feature-row .feature-media { order: 1 !important; }
+      .footer-inner {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 600px) {
+      .nav-links { display: none; }
+      .hero { padding: calc(var(--nav-h) + 48px) 20px 64px; }
+      .hero-buttons { flex-direction: column; }
+      .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+      .feature-row { padding: 32px 20px; }
+      .footer-inner { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ════════════ NAV ════════════ -->
+  <nav id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-brand">
+        <img src="TabFlowV4.png" alt="Tab.Flow" />
+        <span>Tab.Flow</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+      <a href="https://chrome.google.com/webstore" class="nav-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
+        Add to Chrome
+      </a>
+    </div>
+  </nav>
+
+  <!-- ════════════ HERO ════════════ -->
+  <section class="hero">
+    <img src="TabFlowV4.png" alt="Tab.Flow" class="hero-logo" />
+    <h1>
+      Tab management,<br/><span class="accent">reimagined</span>
+    </h1>
+    <p class="hero-sub">
+      A full-screen HUD overlay that replaces Chrome's tab switcher. Fuzzy search, AI assistant, smart grouping, and keyboard-first navigation — all in one shortcut.
+    </p>
+    <div class="hero-buttons">
+      <a href="https://chrome.google.com/webstore" class="btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
+        Add to Chrome — It's Free
+      </a>
+      <a href="https://github.com/danielzhao07/TabFlow" class="btn-secondary">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.604-2.665-.3-5.467-1.332-5.467-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12 24 5.37 18.63 0 12 0z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <div class="hero-proof">
+      <span>Free &amp; open source</span>
+      <div class="dot"></div>
+      <span>No sign-up required</span>
+      <div class="dot"></div>
+      <span>Works on Chrome, Edge &amp; Brave</span>
+    </div>
+  </section>
+
+  <!-- ════════════ FEATURES HEADER ════════════ -->
+  <section id="features">
+    <div class="features-header reveal">
+      <p class="features-label">Features</p>
+      <h2>Your tabs, finally under control</h2>
+    </div>
+
+    <!-- ── Feature 1: HUD Overlay ── -->
+    <div class="feature-row">
+      <div class="feature-media reveal">
+        <div class="demo-frame">
+          <div class="demo-bar">
+            <div class="demo-dot r"></div>
+            <div class="demo-dot y"></div>
+            <div class="demo-dot g"></div>
+            <div class="demo-url">youtube.com</div>
+          </div>
+          <div class="demo-content">
+            <!-- Replace with: <img src="demos/hud-grid.gif" alt="HUD overlay demo" /> -->
+            <div class="placeholder-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <span class="placeholder-label">Demo: Full-screen tab grid</span>
+          </div>
+        </div>
+      </div>
+      <div class="feature-text reveal reveal-delay-1">
+        <h3>See every tab at a glance</h3>
+        <p>Press <strong>Alt+Q</strong> and a full-screen overlay shows all your open tabs in a beautiful grid — like Windows Alt+Tab, but for your browser. Thumbnails, favicons, and group colors at a glance.</p>
+        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
+      </div>
+    </div>
+
+    <!-- ── Feature 2: Fuzzy Search ── -->
+    <div class="feature-row reverse">
+      <div class="feature-text reveal">
+        <h3>Find any tab in milliseconds</h3>
+        <p>Start typing and fuzzy search instantly filters your tabs by title or URL. Use powerful structured filters like <strong>is:pinned</strong>, <strong>domain:github.com</strong>, or <strong>group:work</strong> to drill down fast.</p>
+        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
+      </div>
+      <div class="feature-media reveal reveal-delay-1">
+        <div class="demo-frame">
+          <div class="demo-bar">
+            <div class="demo-dot r"></div>
+            <div class="demo-dot y"></div>
+            <div class="demo-dot g"></div>
+            <div class="demo-url">Tab.Flow — Search</div>
+          </div>
+          <div class="demo-content">
+            <!-- Replace with: <img src="demos/fuzzy-search.gif" alt="Fuzzy search demo" /> -->
+            <div class="placeholder-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <span class="placeholder-label">Demo: Fuzzy search &amp; filters</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Feature 3: AI Assistant ── -->
+    <div class="feature-row">
+      <div class="feature-media reveal">
+        <div class="demo-frame">
+          <div class="demo-bar">
+            <div class="demo-dot r"></div>
+            <div class="demo-dot y"></div>
+            <div class="demo-dot g"></div>
+            <div class="demo-url">Tab.Flow — AI</div>
+          </div>
+          <div class="demo-content">
+            <!-- Replace with: <img src="demos/ai-assistant.gif" alt="AI assistant demo" /> -->
+            <div class="placeholder-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <span class="placeholder-label">Demo: AI assistant browsing</span>
+          </div>
+        </div>
+      </div>
+      <div class="feature-text reveal reveal-delay-1">
+        <h3>An AI that browses for you</h3>
+        <p>Type naturally — <em>"open my GitHub repos"</em>, <em>"play lo-fi music on YouTube"</em>, or <em>"find restaurants near me"</em> — and the AI navigates directly to the right page. No more manual searching.</p>
+        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
+      </div>
+    </div>
+
+    <!-- ── Feature 4: Keyboard Navigation ── -->
+    <div class="feature-row reverse">
+      <div class="feature-text reveal">
+        <h3>Keyboard-first, mouse-optional</h3>
+        <p>Full 2D arrow-key navigation through the grid. Multi-select with Shift, close with Ctrl+X, pin with Ctrl+P, and 20+ more shortcuts. A built-in cheat sheet (<strong>?</strong> key) so you never forget.</p>
+        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
+      </div>
+      <div class="feature-media reveal reveal-delay-1">
+        <div class="demo-frame">
+          <div class="demo-bar">
+            <div class="demo-dot r"></div>
+            <div class="demo-dot y"></div>
+            <div class="demo-dot g"></div>
+            <div class="demo-url">Tab.Flow — Keyboard Nav</div>
+          </div>
+          <div class="demo-content">
+            <!-- Replace with: <img src="demos/keyboard-nav.gif" alt="Keyboard navigation demo" /> -->
+            <div class="placeholder-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <span class="placeholder-label">Demo: Keyboard navigation</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Feature 5: Tab Groups ── -->
+    <div class="feature-row">
+      <div class="feature-media reveal">
+        <div class="demo-frame">
+          <div class="demo-bar">
+            <div class="demo-dot r"></div>
+            <div class="demo-dot y"></div>
+            <div class="demo-dot g"></div>
+            <div class="demo-url">Tab.Flow — Groups</div>
+          </div>
+          <div class="demo-content">
+            <!-- Replace with: <img src="demos/tab-groups.gif" alt="Tab groups demo" /> -->
+            <div class="placeholder-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <span class="placeholder-label">Demo: Smart tab groups</span>
+          </div>
+        </div>
+      </div>
+      <div class="feature-text reveal reveal-delay-1">
+        <h3>Groups that actually make sense</h3>
+        <p>Color-coded tab groups with a visible stripe on every card. Filter by group instantly, get smart group suggestions, and create new groups from multi-selected tabs in one shortcut.</p>
+        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
+      </div>
+    </div>
+
+    <!-- ── Feature 6: Snooze, Notes & Tools ── -->
+    <div class="feature-row reverse">
+      <div class="feature-text reveal">
+        <h3>Snooze tabs, take notes, and more</h3>
+        <p>Snooze a tab to reappear later — in 30 minutes, tomorrow, or next week. Attach notes to any tab. Bookmark with one key. Undo any close instantly. Right-click for a full context menu of power tools.</p>
+        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
+      </div>
+      <div class="feature-media reveal reveal-delay-1">
+        <div class="demo-frame">
+          <div class="demo-bar">
+            <div class="demo-dot r"></div>
+            <div class="demo-dot y"></div>
+            <div class="demo-dot g"></div>
+            <div class="demo-url">Tab.Flow — Tools</div>
+          </div>
+          <div class="demo-content">
+            <!-- Replace with: <img src="demos/snooze-notes.gif" alt="Snooze and notes demo" /> -->
+            <div class="placeholder-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <span class="placeholder-label">Demo: Snooze, notes &amp; context menu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Feature 7: Full-width (like "Available on all platforms") ── -->
+    <div class="feature-full reveal">
+      <h3>Works everywhere you browse</h3>
+      <p>Tab.Flow runs on any Chromium browser. Your preferences, notes, and data stay local — nothing leaves your machine unless you choose to sync.</p>
+      <div class="platform-badges">
+        <div class="platform-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
+          Google Chrome
+        </div>
+        <div class="platform-badge">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.86 17.86q.14 0 .25.12.1.13.1.25t-.11.33l-.32.46-.43.53-.44.5q-.21.25-.38.42l-.22.23q-.58.53-1.34 1.04-.76.51-1.6.91-.86.4-1.74.64-.88.25-1.63.25-1.42 0-2.67-.53-1.25-.53-2.19-1.47-.93-.93-1.47-2.18-.53-1.25-.53-2.67 0-1.22.39-2.35.4-1.13 1.1-2.1.71-.96 1.7-1.72 1-.76 2.17-1.27l.45 1q-1.97 1.03-3.2 2.8-1.22 1.77-1.22 3.64 0 1.12.42 2.1.43.97 1.17 1.71.73.73 1.7 1.16.98.42 2.1.42.91 0 1.79-.27.87-.26 1.6-.66.73-.4 1.3-.85.56-.46.87-.82H16v-3h5.86zM3.66 8.56l-.87-.5q.95-1.63 2.43-2.77Q6.7 4.16 8.56 3.56l.33.95q-1.63.55-2.97 1.6-1.33 1.06-2.26 2.45zM6.3 20.84l-.55.83q-1.13-.73-2-1.73-.88-1-1.44-2.17Q1.76 16.6 1.5 15.33 1.24 14.06 1.24 12.72q0-1.15.28-2.38.28-1.24.81-2.38L3.13 8.5q-.46 1.02-.72 2.1-.26 1.07-.26 2.12 0 1.18.23 2.3.24 1.13.7 2.15.47 1.02 1.15 1.87.68.85 1.57 1.47l.5.33zM12.28 3.18L12.14 2.2q1.17-.12 2.28.04 1.1.16 2.14.59 1.03.43 1.9 1.1.88.68 1.56 1.56l-.83.56q-.6-.8-1.36-1.34-.77-.54-1.65-.88-.88-.33-1.83-.5-.96-.16-2.07-.15z"/></svg>
+          Microsoft Edge
+        </div>
+        <div class="platform-badge">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8zm-1.5-9.5L12 6l1.5 4.5L18 12l-4.5 1.5L12 18l-1.5-4.5L6 12l4.5-1.5z"/></svg>
+          Brave
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ PRICING ════════════ -->
+  <section class="pricing" id="pricing">
+    <p class="features-label">Pricing</p>
+    <h2>Free, forever</h2>
+    <p class="pricing-sub">No tiers, no upsells. Every feature included.</p>
+
+    <div class="pricing-card reveal">
+      <h3>Tab.Flow</h3>
+      <p class="price-tag">100% free &amp; open source</p>
+      <ul class="pricing-features">
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Full-screen HUD with tab grid</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Fuzzy search &amp; structured filters</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> AI-powered assistant</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Keyboard-first navigation</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Tab groups with colors</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Snooze, notes &amp; bookmarks</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Tab suspender (save memory)</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Command palette</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Drag-to-reorder</li>
+        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Works on Chrome, Edge &amp; Brave</li>
+      </ul>
+      <a href="https://chrome.google.com/webstore" class="btn-primary" style="width:100%;justify-content:center;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
+        Install now — Free
+      </a>
+    </div>
+  </section>
+
+  <!-- ════════════ FAQ ════════════ -->
+  <section class="faq" id="faq">
+    <p class="features-label">FAQ</p>
+    <h2>Common questions</h2>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Is Tab.Flow really free?
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a"><p>Yes, 100%. Tab.Flow is free and open source under the MIT license. Every feature is included — no premium tier, no paywalls, no trials. You can view the full source code on GitHub.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Does it work on Firefox or Safari?
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a"><p>Tab.Flow currently supports Chromium-based browsers — Google Chrome, Microsoft Edge, and Brave. Firefox and Safari support may come in the future.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Does Tab.Flow collect my data?
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a"><p>No. Your tabs, notes, bookmarks, and browsing data stay entirely local on your machine. Nothing is sent to any server unless you explicitly enable optional cloud sync.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What's the keyboard shortcut?
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a"><p>Press <strong>Alt+Q</strong> to toggle the HUD overlay. Double-press <strong>Alt+Q+Q</strong> to quick-switch to your last tab. Press <strong>?</strong> inside the HUD to see all 20+ shortcuts.</p></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        How does the AI assistant work?
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="faq-a"><p>The AI assistant uses a language model to understand your natural language requests and translates them into browser actions — opening URLs, searching specific sites, or navigating to pages. It runs through a secure API and never stores your queries.</p></div>
+    </div>
+  </section>
+
+  <!-- ════════════ FOOTER ════════════ -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="#" class="nav-brand">
+          <img src="TabFlowV4.png" alt="Tab.Flow" />
+          <span>Tab.Flow</span>
+        </a>
+        <p>Intelligent tab management for Chrome. Free, open source, and built for power users.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="https://chrome.google.com/webstore">Install</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/danielzhao07/TabFlow">GitHub</a></li>
+          <li><a href="https://github.com/danielzhao07/TabFlow/issues">Report a Bug</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+          <li><a href="terms.html">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-copy">
+      &copy; 2026 Tab.Flow. All rights reserved.
+    </div>
+  </footer>
+
+  <!-- ════════════ SCRIPTS ════════════ -->
+  <script>
+    // Sticky nav background on scroll
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 40);
+    }, { passive: true });
+
+    // Scroll-reveal: elements with .reveal become .visible when in viewport
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
