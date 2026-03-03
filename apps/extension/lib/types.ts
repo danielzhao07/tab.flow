@@ -26,3 +26,15 @@ export interface MRUMessage {
   type: 'toggle-hud' | 'get-tabs' | 'get-recent' | 'switch-tab' | 'close-tab' | 'pin-tab' | 'group-tabs' | 'ungroup-tabs' | 'get-bookmarks' | 'add-bookmark' | 'remove-bookmark' | 'restore-session' | 'reopen-last-closed' | 'tabs-updated';
   payload?: any;
 }
+
+export type UndoRecord = {
+  label: string;
+  timestamp: number;
+} & (
+  | { type: 'close'; closeCount: number }
+  | { type: 'pin'; tabIds: number[]; wasPinned: boolean }
+  | { type: 'bookmark'; url: string; title: string; faviconUrl: string; wasBookmarked: boolean }
+  | { type: 'mute'; tabIds: number[]; wasMuted: boolean }
+  | { type: 'group'; tabIds: number[] }
+  | { type: 'ungroup'; tabIds: number[]; groupTitle: string; groupColor: string }
+);

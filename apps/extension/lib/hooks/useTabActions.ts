@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { TabBookmark } from '@/lib/bookmarks';
+import type { UndoRecord } from '@/lib/types';
 import type { HudState } from './useHudState';
 
 export interface TabActions {
@@ -35,9 +36,18 @@ export interface TabActions {
   muteSelectedTabs: (muted: boolean) => Promise<void>;
   duplicateSelectedTabs: () => void;
   reloadSelectedTabs: () => void;
+  // Undo
+  undo: () => Promise<void>;
 }
 
+const MAX_UNDO_STACK = 20;
+
 export function useTabActions(s: HudState): TabActions {
+  const pushUndo = useCallback((record: UndoRecord) => {
+    s.setUndoStack((prev) => [record, ...prev].slice(0, MAX_UNDO_STACK));
+    s.setUndoToast({ message: record.label });
+  }, [s]);
+
   const switchToTab = useCallback((tabId: number) => {
     chrome.runtime.sendMessage({ type: 'switch-tab', payload: { tabId } });
     s.hide();
@@ -72,14 +82,15 @@ export function useTabActions(s: HudState): TabActions {
     });
     if (closedTab) {
       const title = closedTab.title.length > 30 ? closedTab.title.slice(0, 30) + '...' : closedTab.title;
-      s.setUndoToast({ message: `Closed "${title}"` });
+      pushUndo({ type: 'close', label: `Closed "${title}"`, timestamp: Date.now(), closeCount: 1 });
     }
-  }, [s]);
+  }, [s, pushUndo]);
 
   const togglePin = useCallback((tabId: number, pinned: boolean) => {
+    pushUndo({ type: 'pin', label: pinned ? 'Pinned tab' : 'Unpinned tab', timestamp: Date.now(), tabIds: [tabId], wasPinned: !pinned });
     chrome.runtime.sendMessage({ type: 'pin-tab', payload: { tabId, pinned } });
     s.setTabs((prev) => prev.map((t) => t.tabId === tabId ? { ...t, isPinned: pinned } : t));
-  }, [s]);
+  }, [s, pushUndo]);
 
   const toggleSelect = useCallback((tabId: number, shiftKey: boolean) => {
     s.setSelectedTabs((prev) => {
@@ -102,6 +113,9 @@ export function useTabActions(s: HudState): TabActions {
 
   const closeSelectedTabs = useCallback(() => {
     const toClose = new Set(s.selectedTabs);
+    if (toClose.size > 0) {
+      pushUndo({ type: 'close', label: `Closed ${toClose.size} tabs`, timestamp: Date.now(), closeCount: toClose.size });
+    }
     for (const tabId of toClose) {
       s.pendingExtensionCloseIdsRef.current.add(tabId);
       chrome.runtime.sendMessage({ type: 'close-tab', payload: { tabId } });
@@ -121,12 +135,15 @@ export function useTabActions(s: HudState): TabActions {
         return next;
       });
     }, 300);
-  }, [s]);
+  }, [s, pushUndo]);
 
   const closeDuplicates = useCallback(() => {
     const toClose: number[] = [];
     for (const [, ids] of s.duplicateMap) {
       if (ids.length > 1) toClose.push(...ids.slice(1));
+    }
+    if (toClose.length > 0) {
+      pushUndo({ type: 'close', label: `Closed ${toClose.length} duplicates`, timestamp: Date.now(), closeCount: toClose.length });
     }
     for (const tabId of toClose) {
       s.pendingExtensionCloseIdsRef.current.add(tabId);
@@ -147,7 +164,7 @@ export function useTabActions(s: HudState): TabActions {
         return next;
       });
     }, 300);
-  }, [s]);
+  }, [s, pushUndo]);
 
   const groupSelectedTabs = useCallback(async () => {
     if (s.selectedTabs.size === 0) return;
@@ -163,40 +180,49 @@ export function useTabActions(s: HudState): TabActions {
     for (const [d, c] of domainCounts) { if (c > topCount) { topDomain = d; topCount = c; } }
     const usedColors = new Set(s.tabs.filter((t) => t.groupColor).map((t) => t.groupColor!));
     const color = pickGroupColor(topDomain, usedColors);
+    pushUndo({ type: 'group', label: `Grouped ${tabIds.length} tabs`, timestamp: Date.now(), tabIds });
     await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds, title: topDomain.split('.')[0] || '', color } });
     s.setSelectedTabs(new Set());
     s.fetchTabs();
-  }, [s]);
+  }, [s, pushUndo]);
 
   const ungroupSelectedTabs = useCallback(async () => {
     const tabIds = s.selectedTabs.size > 0
       ? [...s.selectedTabs]
       : s.displayTabs[s.selectedIndex] ? [s.displayTabs[s.selectedIndex].tabId] : [];
     if (tabIds.length === 0) return;
+    // Save group info for undo
+    const groupTab = tabIds.map((id) => s.tabs.find((t) => t.tabId === id)).find((t) => t?.groupId != null);
+    pushUndo({ type: 'ungroup', label: `Ungrouped ${tabIds.length} tabs`, timestamp: Date.now(), tabIds, groupTitle: groupTab?.groupTitle || '', groupColor: groupTab?.groupColor || 'blue' });
     await chrome.runtime.sendMessage({ type: 'ungroup-tabs', payload: { tabIds } });
     s.setSelectedTabs(new Set());
     s.fetchTabs();
-  }, [s]);
+  }, [s, pushUndo]);
 
   const dissolveGroup = useCallback(async (groupId: number) => {
-    const tabIds = s.tabs.filter((t) => t.groupId === groupId).map((t) => t.tabId);
+    const groupTabs = s.tabs.filter((t) => t.groupId === groupId);
+    const tabIds = groupTabs.map((t) => t.tabId);
     if (tabIds.length === 0) return;
+    const firstTab = groupTabs[0];
+    pushUndo({ type: 'ungroup', label: `Dissolved group`, timestamp: Date.now(), tabIds, groupTitle: firstTab?.groupTitle || '', groupColor: firstTab?.groupColor || 'blue' });
     await chrome.runtime.sendMessage({ type: 'ungroup-tabs', payload: { tabIds } });
     s.setGroupFilter((prev) => { const next = new Set(prev); next.delete(groupId); return next; });
     s.fetchTabs();
-  }, [s]);
+  }, [s, pushUndo]);
 
   const toggleBookmark = useCallback(async (tabId: number) => {
     const tab = s.tabs.find((t) => t.tabId === tabId);
     if (!tab) return;
-    if (s.bookmarkedUrls.has(tab.url)) {
+    const wasBookmarked = s.bookmarkedUrls.has(tab.url);
+    pushUndo({ type: 'bookmark', label: wasBookmarked ? 'Removed bookmark' : 'Bookmarked tab', timestamp: Date.now(), url: tab.url, title: tab.title, faviconUrl: tab.faviconUrl, wasBookmarked });
+    if (wasBookmarked) {
       const res = await chrome.runtime.sendMessage({ type: 'remove-bookmark', payload: { url: tab.url } });
       if (res?.bookmarks) s.setBookmarkedUrls(new Set(res.bookmarks.map((b: TabBookmark) => b.url)));
     } else {
       const res = await chrome.runtime.sendMessage({ type: 'add-bookmark', payload: { url: tab.url, title: tab.title, faviconUrl: tab.faviconUrl } });
       if (res?.bookmarks) s.setBookmarkedUrls(new Set(res.bookmarks.map((b: TabBookmark) => b.url)));
     }
-  }, [s]);
+  }, [s, pushUndo]);
 
   const saveNote = useCallback(async (_tabId: number, url: string, note: string) => {
     await chrome.runtime.sendMessage({ type: 'save-note', payload: { url, note } });
@@ -227,12 +253,14 @@ export function useTabActions(s: HudState): TabActions {
   const toggleMute = useCallback(async (tabId: number) => {
     const tab = s.tabs.find((t) => t.tabId === tabId);
     if (!tab) return;
-    const newMuted = !tab.isMuted;
+    const wasMuted = tab.isMuted;
+    const newMuted = !wasMuted;
+    pushUndo({ type: 'mute', label: newMuted ? 'Muted tab' : 'Unmuted tab', timestamp: Date.now(), tabIds: [tabId], wasMuted });
     // Optimistically update local state immediately
     s.setTabs((prev) => prev.map((t) => t.tabId === tabId ? { ...t, isMuted: newMuted } : t));
     // Concurrently update Chrome's native mute state
     await chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted: newMuted } });
-  }, [s]);
+  }, [s, pushUndo]);
 
   const closeByDomain = useCallback(async (tabId: number, domain: string) => {
     await chrome.runtime.sendMessage({ type: 'close-by-domain', payload: { domain, excludeTabId: tabId } });
@@ -290,24 +318,30 @@ export function useTabActions(s: HudState): TabActions {
   const groupTab = useCallback(async (tabId: number) => {
     const tab = s.tabs.find((t) => t.tabId === tabId);
     if (!tab) return;
+    pushUndo({ type: 'group', label: 'Grouped tab', timestamp: Date.now(), tabIds: [tabId] });
     const domain = getDomain(tab.url);
     const usedColors = new Set(s.tabs.filter((t) => t.groupColor).map((t) => t.groupColor!));
     const color = pickGroupColor(domain, usedColors);
     await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds: [tabId], title: domain.split('.')[0] || '', color } });
     s.fetchTabs();
-  }, [s]);
+  }, [s, pushUndo]);
 
   const ungroupTab = useCallback(async (tabId: number) => {
+    const tab = s.tabs.find((t) => t.tabId === tabId);
+    pushUndo({ type: 'ungroup', label: 'Ungrouped tab', timestamp: Date.now(), tabIds: [tabId], groupTitle: tab?.groupTitle || '', groupColor: tab?.groupColor || 'blue' });
     await chrome.runtime.sendMessage({ type: 'ungroup-tabs', payload: { tabIds: [tabId] } });
     s.fetchTabs();
-  }, [s]);
+  }, [s, pushUndo]);
 
   const pinSelectedTabs = useCallback((pinned: boolean) => {
+    if (s.selectedTabs.size > 0) {
+      pushUndo({ type: 'pin', label: pinned ? `Pinned ${s.selectedTabs.size} tabs` : `Unpinned ${s.selectedTabs.size} tabs`, timestamp: Date.now(), tabIds: [...s.selectedTabs], wasPinned: !pinned });
+    }
     for (const tabId of s.selectedTabs) {
       chrome.runtime.sendMessage({ type: 'pin-tab', payload: { tabId, pinned } });
     }
     s.setTabs((prev) => prev.map((t) => s.selectedTabs.has(t.tabId) ? { ...t, isPinned: pinned } : t));
-  }, [s]);
+  }, [s, pushUndo]);
 
   const bookmarkSelectedTabs = useCallback(async () => {
     const toBookmark = s.tabs.filter((t) => s.selectedTabs.has(t.tabId) && !s.bookmarkedUrls.has(t.url));
@@ -319,11 +353,14 @@ export function useTabActions(s: HudState): TabActions {
   }, [s]);
 
   const muteSelectedTabs = useCallback(async (muted: boolean) => {
+    if (s.selectedTabs.size > 0) {
+      pushUndo({ type: 'mute', label: muted ? `Muted ${s.selectedTabs.size} tabs` : `Unmuted ${s.selectedTabs.size} tabs`, timestamp: Date.now(), tabIds: [...s.selectedTabs], wasMuted: !muted });
+    }
     for (const tabId of s.selectedTabs) {
       chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted } });
     }
     s.setTabs((prev) => prev.map((t) => s.selectedTabs.has(t.tabId) ? { ...t, isMuted: muted } : t));
-  }, [s]);
+  }, [s, pushUndo]);
 
   const duplicateSelectedTabs = useCallback(() => {
     for (const tabId of s.selectedTabs) {
@@ -337,6 +374,57 @@ export function useTabActions(s: HudState): TabActions {
     }
   }, [s]);
 
+  const undo = useCallback(async () => {
+    const stack = s.undoStack;
+    if (stack.length === 0) return;
+    const record = stack[0];
+    s.setUndoStack((prev) => prev.slice(1));
+    s.setUndoToast(null);
+
+    switch (record.type) {
+      case 'close':
+        for (let i = 0; i < record.closeCount; i++) {
+          await chrome.runtime.sendMessage({ type: 'reopen-last-closed' });
+        }
+        s.fetchTabs();
+        s.fetchRecentTabs();
+        break;
+      case 'pin':
+        for (const tabId of record.tabIds) {
+          chrome.runtime.sendMessage({ type: 'pin-tab', payload: { tabId, pinned: record.wasPinned } });
+        }
+        s.setTabs((prev) => prev.map((t) => record.tabIds.includes(t.tabId) ? { ...t, isPinned: record.wasPinned } : t));
+        break;
+      case 'bookmark':
+        if (record.wasBookmarked) {
+          // Action was "remove bookmark" → undo = re-add
+          const res = await chrome.runtime.sendMessage({ type: 'add-bookmark', payload: { url: record.url, title: record.title, faviconUrl: record.faviconUrl } });
+          if (res?.bookmarks) s.setBookmarkedUrls(new Set(res.bookmarks.map((b: TabBookmark) => b.url)));
+        } else {
+          // Action was "add bookmark" → undo = remove
+          const res = await chrome.runtime.sendMessage({ type: 'remove-bookmark', payload: { url: record.url } });
+          if (res?.bookmarks) s.setBookmarkedUrls(new Set(res.bookmarks.map((b: TabBookmark) => b.url)));
+        }
+        break;
+      case 'mute':
+        for (const tabId of record.tabIds) {
+          chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted: record.wasMuted } });
+        }
+        s.setTabs((prev) => prev.map((t) => record.tabIds.includes(t.tabId) ? { ...t, isMuted: record.wasMuted } : t));
+        break;
+      case 'group':
+        // Action was "group tabs" → undo = ungroup
+        await chrome.runtime.sendMessage({ type: 'ungroup-tabs', payload: { tabIds: record.tabIds } });
+        s.fetchTabs();
+        break;
+      case 'ungroup':
+        // Action was "ungroup tabs" → undo = re-group with saved title/color
+        await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds: record.tabIds, title: record.groupTitle, color: record.groupColor } });
+        s.fetchTabs();
+        break;
+    }
+  }, [s]);
+
   return {
     switchToTab, closeTab, togglePin, toggleSelect, closeSelectedTabs, closeDuplicates,
     groupSelectedTabs, ungroupSelectedTabs, dissolveGroup, toggleBookmark, saveNote,
@@ -344,6 +432,7 @@ export function useTabActions(s: HudState): TabActions {
     restoreSession, reopenLastClosed, selectAll, duplicateTab, moveToNewWindow,
     moveSelectedToNewWindow, reloadTab, groupTab, ungroupTab,
     pinSelectedTabs, bookmarkSelectedTabs, muteSelectedTabs, duplicateSelectedTabs, reloadSelectedTabs,
+    undo,
   };
 }
 

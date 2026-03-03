@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect, type Dispatch, type SetStateAction } from 'react';
-import type { TabInfo, RecentTab } from '@/lib/types';
+import type { TabInfo, RecentTab, UndoRecord } from '@/lib/types';
 import type { TabFlowSettings } from '@/lib/settings';
 import { searchTabs } from '@/lib/fuse-search';
 import { getSettings } from '@/lib/settings';
@@ -90,6 +90,10 @@ export interface HudState {
   closingTabIds: Set<number>;
   setClosingTabIds: Dispatch<SetStateAction<Set<number>>>;
 
+  // Undo stack
+  undoStack: UndoRecord[];
+  setUndoStack: Dispatch<SetStateAction<UndoRecord[]>>;
+
   // Fetch
   fetchTabs: () => Promise<void>;
   fetchRecentTabs: () => Promise<void>;
@@ -118,6 +122,7 @@ export function useHudState(): HudState {
   const [thumbnails, setThumbnails] = useState<Map<number, string>>(new Map());
   const [groupFilter, setGroupFilter] = useState<Set<number>>(new Set());
   const [closingTabIds, setClosingTabIds] = useState<Set<number>>(new Set());
+  const [undoStack, setUndoStack] = useState<UndoRecord[]>([]);
   const pendingExtensionCloseIdsRef = useRef<Set<number>>(new Set());
 
   const hide = useCallback(() => {
@@ -229,6 +234,7 @@ export function useHudState(): HudState {
     undoToast, setUndoToast,
     groupFilter, setGroupFilter,
     closingTabIds, setClosingTabIds,
+    undoStack, setUndoStack,
     contextMenu, setContextMenu,
     thumbnails, setThumbnails,
     displayTabs, duplicateMap, duplicateUrls, duplicateCount,

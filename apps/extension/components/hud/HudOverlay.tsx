@@ -477,7 +477,7 @@ export function HudOverlay() {
         <UndoToast
           key={s.undoToast.message}
           message={s.undoToast.message}
-          onUndo={() => { a.reopenLastClosed(); s.setUndoToast(null); }}
+          onUndo={() => { a.undo(); }}
           onDismiss={() => s.setUndoToast(null)}
         />
       )}

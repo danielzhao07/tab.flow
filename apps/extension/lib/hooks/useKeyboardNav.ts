@@ -32,6 +32,7 @@ export function useKeyboardNav(
           if (e.key === 'm') { e.preventDefault(); if (s.displayTabs[s.selectedIndex]) a.toggleMute(s.displayTabs[s.selectedIndex].tabId); return; }
           if (e.key === 's') { e.preventDefault(); s.setSortMode((p) => p === 'mru' ? 'title' : 'mru'); return; }
           if (e.key === 'a') { e.preventDefault(); a.selectAll(); return; }
+          if (e.key === 'z') { e.preventDefault(); a.undo(); return; }
         }
         return;
       }

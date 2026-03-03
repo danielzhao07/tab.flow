@@ -1,17 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tab.Flow — Smart Tab Manager for Chrome</title>
-    <meta name="description" content="Replace Chrome's cluttered tab bar with a beautiful full-screen grid. Search, organize, and switch tabs instantly with fuzzy search, AI, and keyboard shortcuts.">
+    <title>Tab.Flow - Smart Tab Manager for Chrome</title>
+    <meta name="description"
+        content="Replace Chrome's cluttered tab bar with a beautiful full-screen grid. Search, organize, and switch tabs instantly with fuzzy search, AI, and keyboard shortcuts.">
     <link rel="icon" type="image/png" href="TabFlowV4.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <style>
         /* ── Reset & Variables ─────────────────────────────── */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         :root {
             --primary: #2563eb;
@@ -41,7 +50,7 @@
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             color: var(--text-700);
             background-color: var(--primary-50);
             background-image: radial-gradient(circle, rgba(37, 99, 235, 0.055) 1px, transparent 1px);
@@ -51,8 +60,17 @@
             word-spacing: 0.04em;
         }
 
-        a { color: inherit; text-decoration: none; }
-        img, video { max-width: 100%; display: block; }
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        img,
+        video {
+            max-width: 100%;
+            display: block;
+        }
+
         code {
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 0.86em;
@@ -86,26 +104,31 @@
             transition: all 0.2s ease;
             text-decoration: none;
         }
+
         .btn-primary {
             background: var(--primary);
             color: #fff;
             box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3), 0 4px 12px rgba(37, 99, 235, 0.15);
         }
+
         .btn-primary:hover {
             background: var(--primary-hover);
             box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35), 0 8px 24px rgba(37, 99, 235, 0.2);
             transform: translateY(-1px);
         }
+
         .btn-secondary {
             background: var(--card-bg);
             color: var(--text-700);
             border: 1.5px solid var(--border);
         }
+
         .btn-secondary:hover {
             border-color: var(--primary-light);
             color: var(--primary);
             background: var(--primary-50);
         }
+
         .btn-sm {
             padding: 10px 20px;
             font-size: 0.85rem;
@@ -118,23 +141,32 @@
             left: 0;
             right: 0;
             z-index: 100;
-            padding: 0 24px;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
+            padding: 0 32px;
+            max-width: max-content;
+            margin: 0 auto;
+            border-radius: 0 0 24px 24px;
+            background: rgba(239, 246, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
         .nav.scrolled {
-            background: rgba(239, 246, 255, 0.82);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            box-shadow: 0 1px 0 var(--border);
+            background: rgba(239, 246, 255, 0.9);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
+
         .nav-inner {
             max-width: 1120px;
             margin: 0 auto;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 32px;
             height: 64px;
         }
+
         .nav-logo {
             display: flex;
             align-items: center;
@@ -144,36 +176,46 @@
             color: var(--text-900);
             letter-spacing: -0.03em;
         }
-        .nav-logo svg {
-            width: 28px;
-            height: 28px;
+
+        .nav-logo svg,
+        .nav-logo img {
+            width: 42px;
+            height: 42px;
         }
+
         .nav-links {
             display: flex;
             align-items: center;
             gap: 32px;
         }
+
         .nav-links a {
             font-size: 0.88rem;
             font-weight: 500;
             color: var(--text-500);
             transition: color 0.15s ease;
         }
+
         .nav-links a:hover {
             color: var(--text-900);
         }
+
         .nav-cta {
             display: flex;
             align-items: center;
             gap: 12px;
         }
-        .nav-cta .btn-sm { padding: 8px 18px; }
+
+        .nav-cta .btn-sm {
+            padding: 8px 18px;
+        }
 
         /* ── Hero ──────────────────────────────────────────── */
         .hero {
             padding: 160px 0 100px;
             text-align: center;
         }
+
         .badge {
             display: inline-flex;
             align-items: center;
@@ -187,6 +229,7 @@
             letter-spacing: 0.01em;
             margin-bottom: 24px;
         }
+
         .hero h1 {
             font-size: 3.8rem;
             font-weight: 800;
@@ -196,12 +239,30 @@
             margin-bottom: 20px;
             text-wrap: balance;
         }
+
         .hero h1 .gradient {
-            background: linear-gradient(135deg, var(--primary), #7c3aed);
+            background: linear-gradient(90deg, var(--primary) 0%, #7c3aed 50%, var(--primary) 100%);
+            background-size: 200% 100%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            animation: gradient-shimmer 4s ease-in-out infinite;
         }
+
+        @keyframes gradient-shimmer {
+            0% {
+                background-position: 100% 50%;
+            }
+
+            50% {
+                background-position: 0% 50%;
+            }
+
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+
         .hero-sub {
             font-size: 1.12rem;
             line-height: 1.7;
@@ -210,6 +271,7 @@
             margin: 0 auto 36px;
             text-wrap: balance;
         }
+
         .hero-ctas {
             display: flex;
             align-items: center;
@@ -218,6 +280,7 @@
             margin-bottom: 24px;
             flex-wrap: wrap;
         }
+
         .hero-note {
             font-size: 0.82rem;
             color: var(--text-400);
@@ -226,14 +289,23 @@
             justify-content: center;
             gap: 6px;
         }
-        .hero-note span { display: flex; align-items: center; gap: 6px; }
-        .hero-note .sep { opacity: 0.4; }
+
+        .hero-note span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hero-note .sep {
+            opacity: 0.4;
+        }
 
         /* ── Hero Screenshot ───────────────────────────────── */
         .hero-visual {
             max-width: 960px;
             margin: 60px auto 0;
         }
+
         .hero-window {
             background: #0f172a;
             border-radius: 14px;
@@ -242,6 +314,7 @@
                 0 25px 60px -12px rgba(0, 0, 0, 0.25),
                 0 0 0 1px rgba(255, 255, 255, 0.06);
         }
+
         .hero-window .demo-bar {
             background: #1a2236;
             padding: 14px 18px;
@@ -249,6 +322,7 @@
             align-items: center;
             gap: 8px;
         }
+
         .hero-window .demo-content {
             position: relative;
             aspect-ratio: 16 / 9;
@@ -257,6 +331,7 @@
             align-items: center;
             justify-content: center;
         }
+
         .hero-window .demo-content img,
         .hero-window .demo-content video {
             width: 100%;
@@ -274,12 +349,14 @@
                 0 0 0 1px rgba(255, 255, 255, 0.05);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
+
         .demo-window:hover {
             transform: translateY(-4px);
             box-shadow:
                 0 28px 60px -12px rgba(0, 0, 0, 0.28),
                 0 0 0 1px rgba(255, 255, 255, 0.08);
         }
+
         .demo-bar {
             background: #1a2236;
             padding: 12px 16px;
@@ -287,14 +364,25 @@
             align-items: center;
             gap: 7px;
         }
+
         .dot {
             width: 11px;
             height: 11px;
             border-radius: 50%;
         }
-        .dot:nth-child(1) { background: #ef4444; }
-        .dot:nth-child(2) { background: #eab308; }
-        .dot:nth-child(3) { background: #22c55e; }
+
+        .dot:nth-child(1) {
+            background: #ef4444;
+        }
+
+        .dot:nth-child(2) {
+            background: #eab308;
+        }
+
+        .dot:nth-child(3) {
+            background: #22c55e;
+        }
+
         .demo-content {
             position: relative;
             aspect-ratio: 16 / 9;
@@ -304,12 +392,14 @@
             justify-content: center;
             overflow: hidden;
         }
+
         .demo-content img,
         .demo-content video {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
+
         .demo-placeholder {
             display: flex;
             flex-direction: column;
@@ -317,6 +407,7 @@
             gap: 14px;
             color: rgba(255, 255, 255, 0.35);
         }
+
         .demo-placeholder .play-circle {
             width: 56px;
             height: 56px;
@@ -328,16 +419,19 @@
             justify-content: center;
             transition: all 0.25s ease;
         }
+
         .demo-window:hover .play-circle {
             background: rgba(37, 99, 235, 0.25);
             border-color: rgba(37, 99, 235, 0.5);
         }
+
         .play-circle svg {
             width: 20px;
             height: 20px;
             fill: rgba(255, 255, 255, 0.6);
             margin-left: 3px;
         }
+
         .demo-placeholder span {
             font-size: 0.82rem;
             font-weight: 500;
@@ -348,10 +442,32 @@
         .features {
             padding: 40px 0 0;
         }
+
         .features-heading {
             text-align: center;
             margin-bottom: 72px;
         }
+
+        .features-heading .section-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            margin-bottom: 12px;
+            font-size: 1.4rem;
+        }
+
+        .features-heading .section-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
         .features-heading h2 {
             font-size: 2.4rem;
             font-weight: 780;
@@ -359,6 +475,7 @@
             letter-spacing: -0.03em;
             margin-bottom: 12px;
         }
+
         .features-heading p {
             font-size: 1.06rem;
             color: var(--text-500);
@@ -368,21 +485,91 @@
 
         .feature-block {
             padding: 56px 0;
+            position: relative;
+            overflow: hidden;
         }
+
+        .feature-block:nth-child(odd) {
+            background: rgba(37, 99, 235, 0.03);
+        }
+
+        .feature-block:nth-child(even) {
+            background: rgba(124, 58, 237, 0.02);
+        }
+
+        .feature-block::after {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            opacity: 0.04;
+            background-repeat: no-repeat;
+            background-size: contain;
+            pointer-events: none;
+        }
+
+        .feature-block:nth-child(1)::after {
+            content: '⊞';
+            font-size: 180px;
+            right: 5%;
+            top: 10%;
+        }
+
+        .feature-block:nth-child(2)::after {
+            content: '⌕';
+            font-size: 180px;
+            left: 5%;
+            top: 10%;
+        }
+
+        .feature-block:nth-child(3)::after {
+            content: '✦';
+            font-size: 180px;
+            right: 5%;
+            top: 10%;
+        }
+
+        .feature-block:nth-child(4)::after {
+            content: '◧';
+            font-size: 180px;
+            left: 5%;
+            top: 10%;
+        }
+
+        .feature-block:nth-child(5)::after {
+            content: '⛋';
+            font-size: 180px;
+            right: 5%;
+            top: 10%;
+        }
+
+        .feature-block:nth-child(6)::after {
+            content: '⌨';
+            font-size: 180px;
+            left: 5%;
+            top: 10%;
+        }
+
         .feature-row {
             display: flex;
             align-items: center;
             gap: 56px;
         }
-        .feature-row.reverse { flex-direction: row-reverse; }
+
+        .feature-row.reverse {
+            flex-direction: row-reverse;
+        }
+
         .feature-visual {
             flex: 1.15;
             min-width: 0;
         }
+
         .feature-text {
             flex: 0.85;
             min-width: 0;
         }
+
         .feature-label {
             display: inline-block;
             padding: 4px 12px;
@@ -395,6 +582,7 @@
             text-transform: uppercase;
             margin-bottom: 16px;
         }
+
         .feature-text h2 {
             font-size: 1.75rem;
             font-weight: 750;
@@ -403,6 +591,7 @@
             line-height: 1.2;
             margin-bottom: 14px;
         }
+
         .feature-text p {
             font-size: 0.96rem;
             line-height: 1.7;
@@ -414,10 +603,12 @@
         .more-features {
             padding: 80px 0;
         }
+
         .more-features-heading {
             text-align: center;
             margin-bottom: 48px;
         }
+
         .more-features-heading h2 {
             font-size: 2rem;
             font-weight: 750;
@@ -425,15 +616,18 @@
             letter-spacing: -0.03em;
             margin-bottom: 10px;
         }
+
         .more-features-heading p {
             font-size: 1rem;
             color: var(--text-500);
         }
+
         .features-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 20px;
         }
+
         .feature-card {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -441,11 +635,13 @@
             padding: 28px;
             transition: all 0.25s ease;
         }
+
         .feature-card:hover {
             border-color: var(--primary-200);
             box-shadow: 0 8px 24px rgba(37, 99, 235, 0.06);
             transform: translateY(-2px);
         }
+
         .feature-card-icon {
             width: 44px;
             height: 44px;
@@ -456,11 +652,13 @@
             justify-content: center;
             margin-bottom: 18px;
         }
+
         .feature-card-icon svg {
             width: 22px;
             height: 22px;
             color: var(--primary);
         }
+
         .feature-card h3 {
             font-size: 1.02rem;
             font-weight: 680;
@@ -468,6 +666,7 @@
             margin-bottom: 8px;
             letter-spacing: -0.015em;
         }
+
         .feature-card p {
             font-size: 0.88rem;
             line-height: 1.6;
@@ -478,10 +677,12 @@
         .pricing {
             padding: 96px 0;
         }
+
         .pricing-heading {
             text-align: center;
             margin-bottom: 52px;
         }
+
         .pricing-heading h2 {
             font-size: 2.4rem;
             font-weight: 780;
@@ -489,12 +690,14 @@
             letter-spacing: -0.03em;
             margin-bottom: 12px;
         }
+
         .pricing-heading p {
             font-size: 1.06rem;
             color: var(--text-500);
             max-width: 440px;
             margin: 0 auto;
         }
+
         .pricing-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -502,6 +705,7 @@
             max-width: 780px;
             margin: 0 auto;
         }
+
         .pricing-card {
             background: var(--card-bg);
             border: 1.5px solid var(--border);
@@ -510,13 +714,16 @@
             position: relative;
             transition: all 0.25s ease;
         }
+
         .pricing-card:hover {
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
         }
+
         .pricing-card.featured {
             border-color: var(--primary);
             box-shadow: 0 0 0 1px var(--primary), 0 12px 32px rgba(37, 99, 235, 0.1);
         }
+
         .pricing-badge {
             position: absolute;
             top: -11px;
@@ -530,12 +737,14 @@
             font-weight: 700;
             letter-spacing: 0.02em;
         }
+
         .pricing-card h3 {
             font-size: 1.1rem;
             font-weight: 700;
             color: var(--text-900);
             margin-bottom: 8px;
         }
+
         .pricing-price {
             font-size: 2.6rem;
             font-weight: 800;
@@ -543,18 +752,21 @@
             letter-spacing: -0.04em;
             margin-bottom: 4px;
         }
+
         .pricing-price .period {
             font-size: 0.9rem;
             font-weight: 500;
             color: var(--text-400);
             letter-spacing: 0;
         }
+
         .pricing-desc {
             font-size: 0.88rem;
             color: var(--text-500);
             margin-bottom: 28px;
             line-height: 1.5;
         }
+
         .pricing-features {
             list-style: none;
             margin-bottom: 32px;
@@ -562,6 +774,7 @@
             flex-direction: column;
             gap: 12px;
         }
+
         .pricing-features li {
             display: flex;
             align-items: flex-start;
@@ -570,6 +783,7 @@
             color: var(--text-700);
             line-height: 1.45;
         }
+
         .pricing-features li svg {
             flex-shrink: 0;
             width: 18px;
@@ -577,16 +791,21 @@
             color: var(--primary);
             margin-top: 2px;
         }
-        .pricing-card .btn { width: 100%; }
+
+        .pricing-card .btn {
+            width: 100%;
+        }
 
         /* ── FAQ ────────────────────────────────────────────── */
         .faq {
             padding: 96px 0;
         }
+
         .faq-heading {
             text-align: center;
             margin-bottom: 52px;
         }
+
         .faq-heading h2 {
             font-size: 2.4rem;
             font-weight: 780;
@@ -594,14 +813,17 @@
             letter-spacing: -0.03em;
             margin-bottom: 12px;
         }
+
         .faq-heading p {
             font-size: 1rem;
             color: var(--text-500);
         }
+
         .faq-heading p a {
             color: var(--primary);
             font-weight: 600;
         }
+
         .faq-list {
             max-width: 680px;
             margin: 0 auto;
@@ -609,9 +831,11 @@
             flex-direction: column;
             gap: 2px;
         }
+
         .faq-item {
             border-bottom: 1px solid var(--border);
         }
+
         .faq-question {
             width: 100%;
             background: none;
@@ -629,7 +853,11 @@
             letter-spacing: -0.01em;
             transition: color 0.15s ease;
         }
-        .faq-question:hover { color: var(--primary); }
+
+        .faq-question:hover {
+            color: var(--primary);
+        }
+
         .faq-icon {
             width: 24px;
             height: 24px;
@@ -637,6 +865,7 @@
             position: relative;
             transition: transform 0.3s ease;
         }
+
         .faq-icon::before,
         .faq-icon::after {
             content: '';
@@ -645,6 +874,7 @@
             border-radius: 2px;
             transition: transform 0.3s ease, opacity 0.3s ease;
         }
+
         .faq-icon::before {
             width: 14px;
             height: 2px;
@@ -652,6 +882,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
+
         .faq-icon::after {
             width: 2px;
             height: 14px;
@@ -659,18 +890,22 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
+
         .faq-item.active .faq-icon::after {
             transform: translate(-50%, -50%) rotate(90deg);
             opacity: 0;
         }
+
         .faq-answer {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.35s ease, padding 0.35s ease;
         }
+
         .faq-item.active .faq-answer {
             max-height: 300px;
         }
+
         .faq-answer p {
             padding-bottom: 22px;
             font-size: 0.92rem;
@@ -683,6 +918,7 @@
             padding: 96px 0;
             text-align: center;
         }
+
         .cta-box {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -692,6 +928,7 @@
             margin: 0 auto;
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
         }
+
         .cta-box h2 {
             font-size: 2.2rem;
             font-weight: 780;
@@ -699,6 +936,7 @@
             letter-spacing: -0.03em;
             margin-bottom: 14px;
         }
+
         .cta-box p {
             font-size: 1.02rem;
             color: var(--text-500);
@@ -707,30 +945,38 @@
             margin-left: auto;
             margin-right: auto;
         }
-        .cta-box .hero-ctas { margin-bottom: 0; }
+
+        .cta-box .hero-ctas {
+            margin-bottom: 0;
+        }
 
         /* ── Footer ────────────────────────────────────────── */
         footer {
             padding: 64px 0 40px;
             border-top: 1px solid var(--border);
         }
+
         .footer-inner {
             display: flex;
             justify-content: space-between;
             gap: 48px;
             margin-bottom: 48px;
         }
+
         .footer-brand {
             max-width: 260px;
         }
+
         .footer-brand .nav-logo {
             margin-bottom: 14px;
         }
+
         .footer-brand p {
             font-size: 0.85rem;
             color: var(--text-500);
             line-height: 1.6;
         }
+
         .footer-col h4 {
             font-size: 0.82rem;
             font-weight: 700;
@@ -739,6 +985,7 @@
             letter-spacing: 0.05em;
             margin-bottom: 16px;
         }
+
         .footer-col a {
             display: block;
             font-size: 0.88rem;
@@ -746,7 +993,11 @@
             padding: 5px 0;
             transition: color 0.15s ease;
         }
-        .footer-col a:hover { color: var(--primary); }
+
+        .footer-col a:hover {
+            color: var(--primary);
+        }
+
         .footer-bottom {
             display: flex;
             align-items: center;
@@ -754,6 +1005,7 @@
             padding-top: 24px;
             border-top: 1px solid var(--border);
         }
+
         .footer-bottom p {
             font-size: 0.8rem;
             color: var(--text-400);
@@ -765,59 +1017,115 @@
             transform: translateY(24px);
             transition: opacity 0.7s ease, transform 0.7s ease;
         }
+
         .fade-in.visible {
             opacity: 1;
             transform: translateY(0);
         }
-        .fade-in-delay-1 { transition-delay: 0.1s; }
-        .fade-in-delay-2 { transition-delay: 0.2s; }
-        .fade-in-delay-3 { transition-delay: 0.3s; }
+
+        .fade-in-delay-1 {
+            transition-delay: 0.1s;
+        }
+
+        .fade-in-delay-2 {
+            transition-delay: 0.2s;
+        }
+
+        .fade-in-delay-3 {
+            transition-delay: 0.3s;
+        }
 
         /* ── Responsive ────────────────────────────────────── */
         @media (max-width: 1024px) {
-            .hero h1 { font-size: 3rem; }
-            .feature-row { gap: 40px; }
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .feature-row {
+                gap: 40px;
+            }
         }
+
         @media (max-width: 768px) {
-            html { font-size: 16px; }
-            .nav-links { display: none; }
-            .hero { padding: 130px 0 60px; }
-            .hero h1 { font-size: 2.4rem; }
+            html {
+                font-size: 16px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 130px 0 60px;
+            }
+
+            .hero h1 {
+                font-size: 2.4rem;
+            }
+
             .feature-row,
             .feature-row.reverse {
                 flex-direction: column;
                 gap: 32px;
             }
-            .feature-visual { order: -1; }
-            .features-grid { grid-template-columns: 1fr; }
-            .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+
+            .feature-visual {
+                order: -1;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+
             .footer-inner {
                 flex-direction: column;
                 gap: 36px;
             }
-            .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
-            .cta-box { padding: 40px 24px; }
-            .cta-box h2 { font-size: 1.7rem; }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            .cta-box {
+                padding: 40px 24px;
+            }
+
+            .cta-box h2 {
+                font-size: 1.7rem;
+            }
         }
+
         @media (max-width: 480px) {
-            .hero h1 { font-size: 2rem; }
-            .hero-ctas { flex-direction: column; width: 100%; }
-            .hero-ctas .btn { width: 100%; }
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero-ctas {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .hero-ctas .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <!-- ─── Navigation ─────────────────────────────────────── -->
     <nav class="nav" id="nav">
         <div class="nav-inner">
             <a href="#" class="nav-logo">
-                <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="2" y="2" width="10.5" height="10.5" rx="3" fill="#2563eb"/>
-                    <rect x="15.5" y="2" width="10.5" height="10.5" rx="3" fill="#93c5fd"/>
-                    <rect x="2" y="15.5" width="10.5" height="10.5" rx="3" fill="#93c5fd"/>
-                    <rect x="15.5" y="15.5" width="10.5" height="10.5" rx="3" fill="#2563eb"/>
-                </svg>
+                <img src="TabFlowV4.png" alt="Tab.Flow">
                 Tab.Flow
             </a>
             <div class="nav-links">
@@ -836,7 +1144,7 @@
         <div class="container">
             <div class="badge fade-in">✦ Smart Tab Management for Chrome</div>
             <h1 class="fade-in fade-in-delay-1">
-                Tab manager with<br><span class="gradient">instant search</span>
+                Your browser<br><span class="gradient">beautifully organized</span>
             </h1>
             <p class="hero-sub fade-in fade-in-delay-2">
                 Tab.Flow replaces Chrome's cluttered tab strip with a beautiful
@@ -845,8 +1153,11 @@
             </p>
             <div class="hero-ctas fade-in fade-in-delay-3">
                 <a href="#" class="btn btn-primary">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                    Add to Chrome — It's Free
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Add to Chrome - It's Free
                 </a>
                 <a href="#features" class="btn btn-secondary">See Features</a>
             </div>
@@ -871,7 +1182,9 @@
                     <!-- Replace with hero screenshot or video -->
                     <div class="demo-placeholder">
                         <div class="play-circle">
-                            <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+                            <svg viewBox="0 0 24 24">
+                                <polygon points="6,3 20,12 6,21" />
+                            </svg>
                         </div>
                         <span>Product overview demo</span>
                     </div>
@@ -884,6 +1197,8 @@
     <section id="features" class="features">
         <div class="container">
             <div class="features-heading fade-in">
+                <span class="section-icon">✨</span>
+                <span class="section-label">Features</span>
                 <h2>Everything you need to tame your tabs</h2>
                 <p>Powerful features designed for people who live in their browser.</p>
             </div>
@@ -904,7 +1219,9 @@
                                 <!-- Replace: demo-grid-hud.mp4 or .gif -->
                                 <div class="demo-placeholder">
                                     <div class="play-circle">
-                                        <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+                                        <svg viewBox="0 0 24 24">
+                                            <polygon points="6,3 20,12 6,21" />
+                                        </svg>
                                     </div>
                                     <span>Demo: Full-Screen Grid HUD</span>
                                 </div>
@@ -914,7 +1231,9 @@
                     <div class="feature-text">
                         <span class="feature-label">Overview</span>
                         <h2>All your tabs in one beautiful grid</h2>
-                        <p>Press Alt+Q to open a full-screen overlay showing every open tab as a card. Each card displays the favicon, title, URL, group color stripe, and status badges for pinned, playing, or duplicate tabs.</p>
+                        <p>Press Alt+Q to open a full-screen overlay showing every open tab as a card. Each card
+                            displays the favicon, title, URL, group color stripe, and status badges for pinned, playing,
+                            or duplicate tabs.</p>
                     </div>
                 </div>
             </div>
@@ -935,7 +1254,9 @@
                                 <!-- Replace: demo-fuzzy-search.mp4 or .gif -->
                                 <div class="demo-placeholder">
                                     <div class="play-circle">
-                                        <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+                                        <svg viewBox="0 0 24 24">
+                                            <polygon points="6,3 20,12 6,21" />
+                                        </svg>
                                     </div>
                                     <span>Demo: Instant Fuzzy Search</span>
                                 </div>
@@ -945,7 +1266,10 @@
                     <div class="feature-text">
                         <span class="feature-label">Search</span>
                         <h2>Find any tab in milliseconds</h2>
-                        <p>Start typing to instantly filter tabs with fuzzy matching powered by Fuse.js. Use smart filters like <code>is:pinned</code>, <code>domain:github.com</code>, or <code>group:work</code> to narrow results even further.</p>
+                        <p>Start typing to instantly filter tabs with fuzzy matching powered by Fuse.js. Use smart
+                            filters like <code>is:pinned</code>, <code>domain:github.com</code>, or
+                            <code>group:work</code> to narrow results even further.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -966,7 +1290,9 @@
                                 <!-- Replace: demo-ai-assistant.mp4 or .gif -->
                                 <div class="demo-placeholder">
                                     <div class="play-circle">
-                                        <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+                                        <svg viewBox="0 0 24 24">
+                                            <polygon points="6,3 20,12 6,21" />
+                                        </svg>
                                     </div>
                                     <span>Demo: AI Tab Assistant</span>
                                 </div>
@@ -976,7 +1302,9 @@
                     <div class="feature-text">
                         <span class="feature-label">AI Powered</span>
                         <h2>Let AI organize your chaos</h2>
-                        <p>Type <code>@</code> to activate the AI assistant powered by Groq. It can group tabs by topic, close old tabs, create workspaces, and handle 21 different actions — all from a single natural language prompt.</p>
+                        <p>Type <code>@</code> to activate the AI assistant powered by Groq. It can group tabs by topic,
+                            close old tabs, create workspaces, and handle 21 different actions, all from a single
+                            natural language prompt.</p>
                     </div>
                 </div>
             </div>
@@ -997,7 +1325,9 @@
                                 <!-- Replace: demo-tab-groups.mp4 or .gif -->
                                 <div class="demo-placeholder">
                                     <div class="play-circle">
-                                        <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+                                        <svg viewBox="0 0 24 24">
+                                            <polygon points="6,3 20,12 6,21" />
+                                        </svg>
                                     </div>
                                     <span>Demo: Smart Tab Groups</span>
                                 </div>
@@ -1007,7 +1337,9 @@
                     <div class="feature-text">
                         <span class="feature-label">Organization</span>
                         <h2>Smart grouping, zero effort</h2>
-                        <p>Tab.Flow detects when you have multiple tabs from the same domain and suggests groups automatically. One click to organize with smart color assignment for 25+ popular domains like GitHub, Google, and YouTube.</p>
+                        <p>Tab.Flow detects when you have multiple tabs from the same domain and suggests groups
+                            automatically. One click to organize with smart color assignment for 25+ popular domains
+                            like GitHub, Google, and YouTube.</p>
                     </div>
                 </div>
             </div>
@@ -1028,7 +1360,9 @@
                                 <!-- Replace: demo-workspaces.mp4 or .gif -->
                                 <div class="demo-placeholder">
                                     <div class="play-circle">
-                                        <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+                                        <svg viewBox="0 0 24 24">
+                                            <polygon points="6,3 20,12 6,21" />
+                                        </svg>
                                     </div>
                                     <span>Demo: Workspaces</span>
                                 </div>
@@ -1038,7 +1372,8 @@
                     <div class="feature-text">
                         <span class="feature-label">Workflow</span>
                         <h2>Save your context, switch projects</h2>
-                        <p>Save your current set of tabs as a named workspace. Switch between projects without losing your place. Workspaces preserve tab groups and can sync to the cloud across devices.</p>
+                        <p>Save your current set of tabs as a named workspace. Switch between projects without losing
+                            your place. Workspaces preserve tab groups and can sync to the cloud across devices.</p>
                     </div>
                 </div>
             </div>
@@ -1059,7 +1394,9 @@
                                 <!-- Replace: demo-keyboard-nav.mp4 or .gif -->
                                 <div class="demo-placeholder">
                                     <div class="play-circle">
-                                        <svg viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21"/></svg>
+                                        <svg viewBox="0 0 24 24">
+                                            <polygon points="6,3 20,12 6,21" />
+                                        </svg>
                                     </div>
                                     <span>Demo: Keyboard Navigation</span>
                                 </div>
@@ -1069,7 +1406,9 @@
                     <div class="feature-text">
                         <span class="feature-label">Productivity</span>
                         <h2>Navigate without your mouse</h2>
-                        <p>Full 2D arrow key navigation across the responsive grid. Enter to switch, Ctrl+X to close, Tab to multi-select. Every action has a keyboard shortcut — press <code>?</code> to see the full cheat sheet.</p>
+                        <p>Full 2D arrow key navigation across the responsive grid. Enter to switch, Ctrl+X to close,
+                            Tab to multi-select. Every action has a keyboard shortcut. Press <code>?</code> to see the
+                            full cheat sheet.</p>
                     </div>
                 </div>
             </div>
@@ -1087,45 +1426,57 @@
                 <!-- Tab Suspender -->
                 <div class="feature-card fade-in">
                     <div class="feature-card-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18.36 6.64A9 9 0 0 1 20.77 15M6.16 6.16a9 9 0 1 0 12.68 12.68"/>
-                            <path d="M12 2v4M2 12h4"/>
-                            <circle cx="12" cy="12" r="2"/>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18.36 6.64A9 9 0 0 1 20.77 15M6.16 6.16a9 9 0 1 0 12.68 12.68" />
+                            <path d="M12 2v4M2 12h4" />
+                            <circle cx="12" cy="12" r="2" />
                         </svg>
                     </div>
                     <h3>Tab Suspender</h3>
-                    <p>Automatically suspend inactive tabs to free up memory. Pinned and audible tabs are never touched.</p>
+                    <p>Automatically suspend inactive tabs to free up memory. Pinned and audible tabs are never touched.
+                    </p>
                 </div>
 
                 <!-- Command Palette -->
                 <div class="feature-card fade-in fade-in-delay-1">
                     <div class="feature-card-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="4 17 10 11 4 5" />
+                            <line x1="12" y1="19" x2="20" y2="19" />
                         </svg>
                     </div>
                     <h3>Command Palette</h3>
-                    <p>Type <code>&gt;</code> in the search bar to access quick commands: close duplicates, group all tabs, export data, and more.</p>
+                    <p>Type <code>&gt;</code> in the search bar to access quick commands: close duplicates, group all
+                        tabs, export data, and more.</p>
                 </div>
 
                 <!-- Notes -->
                 <div class="feature-card fade-in fade-in-delay-2">
                     <div class="feature-card-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 20h9" />
+                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                         </svg>
                     </div>
                     <h3>Tab Notes</h3>
-                    <p>Attach text notes to any tab. Notes are included in search results so you can find tabs by your own annotations.</p>
+                    <p>Attach text notes to any tab. Notes are included in search results so you can find tabs by your
+                        own annotations.</p>
                 </div>
 
                 <!-- Drag to Reorder -->
                 <div class="feature-card fade-in">
                     <div class="feature-card-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/>
-                            <polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/>
-                            <line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="5 9 2 12 5 15" />
+                            <polyline points="9 5 12 2 15 5" />
+                            <polyline points="15 19 12 22 9 19" />
+                            <polyline points="19 9 22 12 19 15" />
+                            <line x1="2" y1="12" x2="22" y2="12" />
+                            <line x1="12" y1="2" x2="12" y2="22" />
                         </svg>
                     </div>
                     <h3>Drag to Reorder</h3>
@@ -1135,25 +1486,29 @@
                 <!-- Multi-Window -->
                 <div class="feature-card fade-in fade-in-delay-1">
                     <div class="feature-card-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="3" width="20" height="14" rx="2"/>
-                            <path d="M8 21h8M12 17v4"/>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                            <path d="M8 21h8M12 17v4" />
                         </svg>
                     </div>
                     <h3>Multi-Window</h3>
-                    <p>See and manage tabs across all browser windows. Move tabs between windows or merge them with one click.</p>
+                    <p>See and manage tabs across all browser windows. Move tabs between windows or merge them with one
+                        click.</p>
                 </div>
 
                 <!-- Undo Close -->
                 <div class="feature-card fade-in fade-in-delay-2">
                     <div class="feature-card-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                            <path d="M3 3v5h5"/>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
                         </svg>
                     </div>
                     <h3>Undo Close</h3>
-                    <p>Accidentally closed a tab? An undo toast appears instantly, letting you restore it with one click or Ctrl+Z.</p>
+                    <p>Accidentally closed a tab? An undo toast appears instantly, letting you restore it with one click
+                        or Ctrl+Z.</p>
                 </div>
             </div>
         </div>
@@ -1164,80 +1519,66 @@
         <div class="container">
             <div class="pricing-heading fade-in">
                 <h2>Free with no sign-up</h2>
-                <p>Start using Tab.Flow immediately. Upgrade later if you want cloud sync and AI.</p>
+                <p>Every feature included. No tiers, no limits, no upsells.</p>
             </div>
-            <div class="pricing-grid">
+            <div class="pricing-grid" style="grid-template-columns:1fr;max-width:480px;">
                 <!-- Free -->
-                <div class="pricing-card fade-in">
+                <div class="pricing-card featured fade-in">
                     <h3>Tab.Flow Free</h3>
                     <div class="pricing-price">$0</div>
                     <p class="pricing-desc">Everything you need to manage tabs locally.</p>
                     <ul class="pricing-features">
                         <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Full-screen grid HUD
                         </li>
                         <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Fuzzy search with filters
                         </li>
                         <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Tab groups &amp; auto-suggestions
                         </li>
                         <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Workspaces (local)
                         </li>
                         <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Tab suspender
                         </li>
                         <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Keyboard navigation &amp; shortcuts
                         </li>
                         <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
                             Command palette
                         </li>
                     </ul>
-                    <a href="#" class="btn btn-secondary">Add to Chrome</a>
-                </div>
-
-                <!-- Pro -->
-                <div class="pricing-card featured fade-in fade-in-delay-1">
-                    <div class="pricing-badge">Popular</div>
-                    <h3>Tab.Flow Pro</h3>
-                    <div class="pricing-price">$4 <span class="period">/ month</span></div>
-                    <p class="pricing-desc">For power users who want AI and cloud sync.</p>
-                    <ul class="pricing-features">
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Everything in Free
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            AI tab assistant (unlimited)
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Cloud sync across devices
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Tab analytics &amp; insights
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Workspace cloud backup
-                        </li>
-                        <li>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Priority support
-                        </li>
-                    </ul>
-                    <a href="#" class="btn btn-primary">Upgrade Now</a>
+                    <a href="https://chrome.google.com/webstore" class="btn btn-primary">Add to Chrome - It's Free</a>
                 </div>
             </div>
         </div>
@@ -1257,7 +1598,9 @@
                         <span class="faq-icon"></span>
                     </button>
                     <div class="faq-answer">
-                        <p>Tab.Flow is a Chrome extension that replaces the cluttered tab strip with a full-screen grid overlay. It gives you fuzzy search, AI-powered organization, smart tab groups, workspaces, and keyboard-first navigation — all accessible with a single shortcut (Alt+Q).</p>
+                        <p>Tab.Flow is a Chrome extension that replaces the cluttered tab strip with a full-screen grid
+                            overlay. It gives you fuzzy search, AI-powered organization, smart tab groups, workspaces,
+                            and keyboard-first navigation, all accessible with a single shortcut (Alt+Q).</p>
                     </div>
                 </div>
 
@@ -1267,7 +1610,12 @@
                         <span class="faq-icon"></span>
                     </button>
                     <div class="faq-answer">
-                        <p>Yes! All core features — the grid HUD, fuzzy search, tab groups, workspaces, tab suspender, keyboard navigation, and command palette — are completely free with no sign-up required. Pro is optional and adds AI assistance, cloud sync, and analytics.</p>
+                        <p>Yes! All core features, including the grid HUD, fuzzy search, tab groups, AI assistant,
+                            workspaces,
+                            tab suspender,
+                            keyboard navigation, and command palette, are completely free with no sign-up required.
+                            Tab.Flow is
+                            open source under the MIT license.</p>
                     </div>
                 </div>
 
@@ -1277,7 +1625,9 @@
                         <span class="faq-icon"></span>
                     </button>
                     <div class="faq-answer">
-                        <p>No. Tab.Flow is designed to be lightweight. The overlay only renders when you activate it (Alt+Q). The tab suspender actually saves memory by discarding inactive tabs. Background processes use Chrome's alarms API and run at minimal intervals.</p>
+                        <p>No. Tab.Flow is designed to be lightweight. The overlay only renders when you activate it
+                            (Alt+Q). The tab suspender actually saves memory by discarding inactive tabs. Background
+                            processes use Chrome's alarms API and run at minimal intervals.</p>
                     </div>
                 </div>
 
@@ -1287,7 +1637,10 @@
                         <span class="faq-icon"></span>
                     </button>
                     <div class="faq-answer">
-                        <p>Type @ in the search bar to activate the AI assistant. It uses Groq's LLaMA model to understand natural language commands like "group my GitHub tabs" or "close tabs I haven't used today." You provide your own free Groq API key for the free tier, or it's included with Pro.</p>
+                        <p>Type @ in the search bar to activate the AI assistant. It uses Groq's LLaMA model to
+                            understand natural language commands like "group my GitHub tabs" or "close tabs I haven't
+                            used today." You provide your own free Groq API key for the free tier, or it's included with
+                            Pro.</p>
                     </div>
                 </div>
 
@@ -1297,7 +1650,8 @@
                         <span class="faq-icon"></span>
                     </button>
                     <div class="faq-answer">
-                        <p>With Tab.Flow Pro, your workspaces, bookmarks, notes, and settings sync across all your devices through our secure cloud backend. The free tier stores everything locally in Chrome's storage.</p>
+                        <p>Yes! Your workspaces, bookmarks, notes, and settings can sync across all your
+                            devices through our secure cloud backend, included for free with your Tab.Flow account.</p>
                     </div>
                 </div>
 
@@ -1307,7 +1661,9 @@
                         <span class="faq-icon"></span>
                     </button>
                     <div class="faq-answer">
-                        <p>Tab.Flow works on Chrome and all Chromium-based browsers including Edge, Brave, Arc, and Vivaldi. Firefox support is not currently available due to differences in the extension API.</p>
+                        <p>Tab.Flow works on Chrome and all Chromium-based browsers including Edge, Brave, Arc, and
+                            Vivaldi. Firefox support is not currently available due to differences in the extension API.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -1322,8 +1678,11 @@
                 <p>Join thousands of users who switched to a better way to manage their browser tabs.</p>
                 <div class="hero-ctas">
                     <a href="#" class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-                        Add to Chrome — It's Free
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Add to Chrome - It's Free
                     </a>
                     <a href="#features" class="btn btn-secondary">Learn More</a>
                 </div>
@@ -1337,12 +1696,7 @@
             <div class="footer-inner">
                 <div class="footer-brand">
                     <a href="#" class="nav-logo">
-                        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
-                            <rect x="2" y="2" width="10.5" height="10.5" rx="3" fill="#2563eb"/>
-                            <rect x="15.5" y="2" width="10.5" height="10.5" rx="3" fill="#93c5fd"/>
-                            <rect x="2" y="15.5" width="10.5" height="10.5" rx="3" fill="#93c5fd"/>
-                            <rect x="15.5" y="15.5" width="10.5" height="10.5" rx="3" fill="#2563eb"/>
-                        </svg>
+                        <img src="TabFlowV4.png" alt="Tab.Flow" style="width:24px;height:24px;">
                         Tab.Flow
                     </a>
                     <p>A smarter way to manage, search, and organize your browser tabs.</p>
@@ -1351,7 +1705,7 @@
                     <h4>Product</h4>
                     <a href="#features">Features</a>
                     <a href="#pricing">Pricing</a>
-                    <a href="#">Changelog</a>
+                    <a href="https://chrome.google.com/webstore">Install</a>
                 </div>
                 <div class="footer-col">
                     <h4>Legal</h4>
@@ -1421,4 +1775,5 @@
         });
     </script>
 </body>
+
 </html>
