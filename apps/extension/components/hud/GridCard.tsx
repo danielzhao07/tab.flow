@@ -196,6 +196,7 @@ export function GridCard({
   ];
 
   const contextItems = isInMultiSelect ? multiContextItems : singleContextItems;
+  const isActive = tab.isActive;
 
   const borderColor = isSelected
     ? 'rgba(100,180,255,0.92)'
@@ -237,6 +238,11 @@ export function GridCard({
           (e.currentTarget as HTMLDivElement).style.borderColor = borderColor;
         }}
       >
+        {/* Active tab top accent stripe */}
+        {isActive && (
+          <div className="h-[3px] w-full shrink-0" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.55) 40%, rgba(180,160,255,0.6) 70%, rgba(255,255,255,0.0) 100%)' }} />
+        )}
+
         {/* Title bar at top */}
         <div
           className="flex items-center gap-1.5 px-2.5 py-1.5 shrink-0"
@@ -260,7 +266,7 @@ export function GridCard({
           )}
 
           {/* Title */}
-          <span className="flex-1 text-[12px] text-white/80 truncate font-medium leading-none">
+          <span className={`flex-1 text-[12px] truncate font-medium leading-none ${isActive ? 'text-white' : 'text-white/80'}`}>
             {tab.title || domain}
           </span>
 
