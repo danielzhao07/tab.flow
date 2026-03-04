@@ -238,10 +238,6 @@ export function GridCard({
           (e.currentTarget as HTMLDivElement).style.borderColor = borderColor;
         }}
       >
-        {/* Active tab top accent stripe */}
-        {isActive && (
-          <div className="h-[3px] w-full shrink-0" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.0) 0%, rgba(255,255,255,0.55) 40%, rgba(180,160,255,0.6) 70%, rgba(255,255,255,0.0) 100%)' }} />
-        )}
 
         {/* Title bar at top */}
         <div

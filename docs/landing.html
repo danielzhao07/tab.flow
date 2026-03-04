@@ -382,7 +382,7 @@
 
         .demo-content {
             position: relative;
-            aspect-ratio: 16/9;
+            aspect-ratio: 4/3;
             background: linear-gradient(145deg, #0c1322, #141d30);
             display: flex;
             align-items: center;
@@ -598,6 +598,11 @@
             overflow: visible
         }
 
+        .feature-block>.container {
+            padding: 0;
+            max-width: none
+        }
+
         .feature-block:nth-child(odd) {
             background: rgba(59, 130, 246, .02)
         }
@@ -634,8 +639,10 @@
             display: flex;
             align-items: center;
             gap: 0;
-            max-width: none;
-            margin: 0
+            width: 100vw;
+            position: relative;
+            left: 50%;
+            margin-left: -50vw
         }
 
         .feature-row.reverse {
@@ -643,22 +650,19 @@
         }
 
         .feature-visual {
-            flex: 1.2;
-            min-width: 0;
-            margin-left: calc(-1 * (50vw - 560px));
-            padding-left: 0
+            flex: 0 0 55%;
+            min-width: 0
         }
 
         .feature-row.reverse .feature-visual {
-            margin-left: 0;
-            margin-right: calc(-1 * (50vw - 560px))
+            flex: 0 0 55%
         }
 
         .feature-text {
-            flex: .8;
+            flex: 1;
             min-width: 0;
             position: relative;
-            padding: 0 48px
+            padding: 40px 64px
         }
 
         .feature-text::after {
