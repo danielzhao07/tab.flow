@@ -1,3 +1,5 @@
+import type { TabInfo } from '@/lib/types';
+
 export function getDomain(url: string): string {
   try { return new URL(url).hostname.replace('www.', ''); } catch { return ''; }
 }
@@ -109,4 +111,120 @@ export function getGroupTitle(domain: string): string {
   // Fallback: capitalise first segment
   const first = parts[0];
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : domain;
+}
+
+// ── Smart group suggestions ──────────────────────────────────────────────────
+
+// Words that are too generic to form a meaningful cluster label
+const STOP_WORDS = new Set([
+  // Short connectors (most filtered by length ≥4 already)
+  'this', 'that', 'with', 'from', 'into', 'over', 'under', 'about', 'through',
+  'which', 'what', 'when', 'where', 'have', 'will', 'would', 'could', 'should',
+  'they', 'them', 'their', 'your', 'mine', 'just', 'like', 'also', 'here',
+  'then', 'than', 'most', 'some', 'more', 'much', 'each', 'such', 'been',
+  'does', 'done', 'were', 'been', 'have', 'make', 'take', 'give', 'keep',
+  // Web/UI noise
+  'home', 'page', 'site', 'next', 'back', 'open', 'sign', 'view', 'show',
+  'find', 'help', 'info', 'search', 'close', 'login', 'with', 'from',
+  // Content noise
+  'part', 'step', 'full', 'free', 'best', 'news', 'post', 'read', 'blog',
+]);
+
+function capitalize(s: string): string {
+  return s.split(' ').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+/** Strip trailing site attribution like "- GitHub", "| Reddit", "· Hacker News" */
+function cleanTitle(title: string): string {
+  return title.replace(/\s*[\|·•\-–—]\s*[A-Z][^|\-]{1,25}$/, '').trim() || title;
+}
+
+function titleWords(title: string): string[] {
+  return cleanTitle(title)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !/^\d+$/.test(w));
+}
+
+function titleKeywords(title: string): string[] {
+  return titleWords(title).filter((w) => !STOP_WORDS.has(w));
+}
+
+/** Adjacent keyword pairs from a title (both words must be ≥4 chars, non-stop) */
+function titleBigrams(title: string): string[] {
+  const words = titleWords(title);
+  const bigrams: string[] = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    const a = words[i], b = words[i + 1];
+    if (!STOP_WORDS.has(a) && !STOP_WORDS.has(b)) bigrams.push(`${a} ${b}`);
+  }
+  return bigrams;
+}
+
+export interface SmartSuggestion {
+  label: string;
+  tabIds: number[];
+}
+
+/**
+ * Suggests tab groups smarter than pure-domain clustering.
+ * Priority: bigram keyword clusters → unigram keyword clusters → domain fallback.
+ * Tabs already in a group are excluded. At most 4 suggestions returned.
+ */
+export function getSmartSuggestions(tabs: TabInfo[], existingTitles: Set<string>): SmartSuggestion[] {
+  // Build inverted indexes
+  const bigramMap = new Map<string, TabInfo[]>();
+  const wordMap = new Map<string, TabInfo[]>();
+
+  for (const tab of tabs) {
+    for (const bg of new Set(titleBigrams(tab.title))) {
+      const list = bigramMap.get(bg) ?? [];
+      list.push(tab);
+      bigramMap.set(bg, list);
+    }
+    for (const w of new Set(titleKeywords(tab.title))) {
+      const list = wordMap.get(w) ?? [];
+      list.push(tab);
+      wordMap.set(w, list);
+    }
+  }
+
+  const used = new Set<number>();
+  const results: SmartSuggestion[] = [];
+
+  const tryAdd = (label: string, matching: TabInfo[]) => {
+    if (results.length >= 4) return;
+    if (existingTitles.has(label.toLowerCase())) return;
+    const fresh = matching.filter((t) => !used.has(t.tabId));
+    if (fresh.length < 2) return;
+    results.push({ label, tabIds: fresh.map((t) => t.tabId) });
+    for (const t of fresh) used.add(t.tabId);
+  };
+
+  // 1. Bigrams (most specific — e.g. "React Hooks", "Machine Learning")
+  [...bigramMap.entries()]
+    .filter(([, ts]) => ts.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length)
+    .forEach(([bg, ts]) => tryAdd(capitalize(bg), ts));
+
+  // 2. Unigrams (e.g. "React", "Python", "Figma")
+  [...wordMap.entries()]
+    .filter(([, ts]) => ts.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length)
+    .forEach(([w, ts]) => tryAdd(capitalize(w), ts));
+
+  // 3. Domain fallback for tabs not claimed above
+  const remaining = tabs.filter((t) => !used.has(t.tabId));
+  const domainMap = new Map<string, TabInfo[]>();
+  for (const tab of remaining) {
+    const d = getDomain(tab.url);
+    if (d) { const list = domainMap.get(d) ?? []; list.push(tab); domainMap.set(d, list); }
+  }
+  [...domainMap.entries()]
+    .filter(([, ts]) => ts.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length)
+    .forEach(([d, ts]) => tryAdd(getGroupTitle(d), ts));
+
+  return results;
 }

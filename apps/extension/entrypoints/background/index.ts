@@ -990,7 +990,7 @@ export default defineBackground(() => {
           if (urls.length === 0) { sendResponse({ success: false }); return; }
 
           // Create new window with the first URL; remaining tabs added after
-          const newWindow = await chrome.windows.create({ url: urls[0], focused: true });
+          const newWindow = await chrome.windows.create({ url: urls[0], focused: true, state: 'maximized' });
           const windowId = newWindow.id!;
           const firstTabId = newWindow.tabs?.[0]?.id;
 

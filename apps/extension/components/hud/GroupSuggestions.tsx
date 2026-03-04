@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { TabInfo } from '@/lib/types';
 import type { TabActions } from '@/lib/hooks/useTabActions';
-import { getDomain, getGroupTitle } from '@/lib/group-utils';
+import { getDomain, getGroupTitle, getSmartSuggestions } from '@/lib/group-utils';
 
 const GROUP_COLORS: Record<string, string> = {
   blue: '#8ab4f8', cyan: '#78d9ec', green: '#81c995', yellow: '#fdd663',
@@ -23,29 +23,12 @@ export function GroupSuggestions({
   const [hoveredId, setHoveredId] = useState<number | string | null>(null);
 
   const suggestions = useMemo(() => {
-    // Collect existing group titles (lower-cased) to avoid naming conflicts
     const existingTitles = new Set<string>();
     for (const tab of tabs) {
       if (tab.groupId && tab.groupTitle) existingTitles.add(tab.groupTitle.toLowerCase());
     }
-
-    const domainMap = new Map<string, TabInfo[]>();
-    for (const tab of tabs) {
-      if (tab.groupId) continue;
-      const d = getDomain(tab.url);
-      if (!d) continue;
-      const existing = domainMap.get(d);
-      if (existing) existing.push(tab);
-      else domainMap.set(d, [tab]);
-    }
-    return [...domainMap.entries()]
-      .filter(([domain, tabList]) => {
-        if (tabList.length < 2) return false;
-        // Skip if a group with this generated title already exists
-        return !existingTitles.has(getGroupTitle(domain).toLowerCase());
-      })
-      .sort((a, b) => b[1].length - a[1].length)
-      .slice(0, 4);
+    const ungrouped = tabs.filter((t) => !t.groupId);
+    return getSmartSuggestions(ungrouped, existingTitles);
   }, [tabs]);
 
   const existingGroups = useMemo(() => {
@@ -187,27 +170,27 @@ export function GroupSuggestions({
         </>
       )}
 
-      {/* Domain suggestions */}
-      {suggestions.map(([domain, tabList]) => (
+      {/* Smart suggestions */}
+      {suggestions.map((sg) => (
         <button
-          key={domain}
+          key={sg.label}
           className="flex items-center gap-2 px-2.5 shrink-0 rounded-md transition-all"
           style={{
             height: 26,
             border: '1px solid rgba(255,255,255,0.07)',
-            background: hoveredId === domain ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.03)',
-            boxShadow: hoveredId === domain ? '0 0 8px rgba(255,255,255,0.06)' : 'none',
+            background: hoveredId === sg.label ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.03)',
+            boxShadow: hoveredId === sg.label ? '0 0 8px rgba(255,255,255,0.06)' : 'none',
             transition: 'background 150ms, box-shadow 150ms',
             outline: 'none',
             cursor: 'pointer',
           }}
-          onMouseEnter={() => setHoveredId(domain)}
+          onMouseEnter={() => setHoveredId(sg.label)}
           onMouseLeave={() => setHoveredId(null)}
-          onClick={() => actions.groupSuggestionTabs(tabList.map((t) => t.tabId), domain)}
-          title={`Group ${tabList.length} ${domain} tabs`}
+          onClick={() => actions.groupSuggestionTabs(sg.tabIds, sg.label)}
+          title={`Group ${sg.tabIds.length} tabs → "${sg.label}"`}
         >
-          <span className="text-[11px] text-white/35">{getGroupTitle(domain)}</span>
-          <span className="text-[10px] text-white/20">{tabList.length}</span>
+          <span className="text-[11px] text-white/35">{sg.label}</span>
+          <span className="text-[10px] text-white/20">{sg.tabIds.length}</span>
         </button>
       ))}
     </div>
