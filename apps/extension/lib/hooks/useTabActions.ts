@@ -394,12 +394,14 @@ export function useTabActions(s: HudState): TabActions {
         s.fetchTabs();
         s.fetchRecentTabs();
         break;
-      case 'pin':
-        for (const tabId of record.tabIds) {
-          chrome.runtime.sendMessage({ type: 'pin-tab', payload: { tabId, pinned: record.wasPinned } });
+      case 'pin': {
+        const { tabIds: pinTabIds, wasPinned } = record;
+        for (const tabId of pinTabIds) {
+          chrome.runtime.sendMessage({ type: 'pin-tab', payload: { tabId, pinned: wasPinned } });
         }
-        s.setTabs((prev) => prev.map((t) => record.tabIds.includes(t.tabId) ? { ...t, isPinned: record.wasPinned } : t));
+        s.setTabs((prev) => prev.map((t) => pinTabIds.includes(t.tabId) ? { ...t, isPinned: wasPinned } : t));
         break;
+      }
       case 'bookmark':
         if (record.wasBookmarked) {
           // Action was "remove bookmark" → undo = re-add
@@ -411,12 +413,14 @@ export function useTabActions(s: HudState): TabActions {
           if (res?.bookmarks) s.setBookmarkedUrls(new Set(res.bookmarks.map((b: TabBookmark) => b.url)));
         }
         break;
-      case 'mute':
-        for (const tabId of record.tabIds) {
-          chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted: record.wasMuted } });
+      case 'mute': {
+        const { tabIds: muteTabIds, wasMuted } = record;
+        for (const tabId of muteTabIds) {
+          chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted: wasMuted } });
         }
-        s.setTabs((prev) => prev.map((t) => record.tabIds.includes(t.tabId) ? { ...t, isMuted: record.wasMuted } : t));
+        s.setTabs((prev) => prev.map((t) => muteTabIds.includes(t.tabId) ? { ...t, isMuted: wasMuted } : t));
         break;
+      }
       case 'group':
         // Action was "group tabs" → undo = ungroup
         await chrome.runtime.sendMessage({ type: 'ungroup-tabs', payload: { tabIds: record.tabIds } });
