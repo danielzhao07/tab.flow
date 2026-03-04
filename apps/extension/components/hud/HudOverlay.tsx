@@ -33,6 +33,7 @@ export function HudOverlay() {
   const [completedCount, setCompletedCount] = useState(0);
   const [wsRefreshKey, setWsRefreshKey] = useState(0);
   const promptHistoryRef = useRef<string[]>([]);
+  const aiExecutingRef = useRef(false);
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
 
   // TabGrid computes adaptive cols (depends on container size) and reports it back
@@ -55,7 +56,7 @@ export function HudOverlay() {
   // that may not reach the content-script message listener (e.g. chrome:// tab constraints)
   useEffect(() => {
     if (!s.visible) return;
-    const interval = setInterval(() => { s.fetchTabs(); }, 750);
+    const interval = setInterval(() => { if (!aiExecutingRef.current) s.fetchTabs(); }, 750);
     return () => clearInterval(interval);
   }, [s.visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -105,7 +106,7 @@ export function HudOverlay() {
         });
       }
 
-      if (message.type === 'tab-removed' && s.visible && message.tabId) {
+      if (message.type === 'tab-removed' && s.visible && message.tabId && !aiExecutingRef.current) {
         const tid = message.tabId;
         if (s.pendingExtensionCloseIdsRef.current.has(tid)) {
           // Extension-initiated close — closeTab() already handling animation + removal
@@ -137,10 +138,10 @@ export function HudOverlay() {
           return next;
         });
       }
-      if (message.type === 'tab-created' && s.visible) {
+      if (message.type === 'tab-created' && s.visible && !aiExecutingRef.current) {
         s.fetchTabs();
       }
-      if (message.type === 'tabs-updated' && s.visible) {
+      if (message.type === 'tabs-updated' && s.visible && !aiExecutingRef.current) {
         s.fetchTabs();
       }
       if (message.type === 'workspace-updated' && s.visible) {
@@ -275,10 +276,15 @@ export function HudOverlay() {
       const result: AgentResult = { message: res.message, actions: res.actions ?? [] };
       setAgentResult(result);
       setAiPending(false);
+      // Suppress all intermediate tab refetches during action execution
+      // so the grid only reflows once at the end
+      aiExecutingRef.current = true;
       for (let i = 0; i < result.actions.length; i++) {
         await executeAction(result.actions[i]);
         setCompletedCount(i + 1);
       }
+      aiExecutingRef.current = false;
+      // Single fetch after all actions complete — one reflow
       await s.fetchTabs();
       chrome.runtime.sendMessage({ type: 'get-windows' }).then((windowsRes) => {
         if (windowsRes?.windows) s.setOtherWindows(windowsRes.windows);
@@ -288,6 +294,7 @@ export function HudOverlay() {
         setAiMode(false);
       }, 2500);
     } catch {
+      aiExecutingRef.current = false;
       setAgentResult({ message: 'Something went wrong. Please try again.', actions: [] });
       setAiPending(false);
     }
