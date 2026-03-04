@@ -123,7 +123,7 @@ export function BottomBar({ query, onQueryChange, isAiMode, onAiClick, onAiSubmi
       style={{ background: 'rgba(0,0,0,0.2)' }}
     >
       <div
-        className="flex-1 flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors"
+        className="flex-1 flex items-center gap-2 rounded-xl border px-3 py-1.5 transition-colors"
         style={{
           background: 'rgba(255,255,255,0.05)',
           borderColor: isAiMode ? 'rgba(160,140,255,0.4)' : 'rgba(255,255,255,0.1)',
@@ -149,8 +149,8 @@ export function BottomBar({ query, onQueryChange, isAiMode, onAiClick, onAiSubmi
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder={isAiMode ? 'Ask flow anything…' : ''}
-            className="bg-transparent text-[13px] placeholder-white/20 outline-none"
-            style={{ color: isAiMode ? 'rgba(200,190,255,0.85)' : 'rgba(255,255,255,0.7)', width: '100%' }}
+            className="bg-transparent text-[13px] leading-none placeholder-white/20 outline-none"
+            style={{ color: isAiMode ? 'rgba(200,190,255,0.85)' : 'rgba(255,255,255,0.7)', width: '100%', height: 20, display: 'flex', alignItems: 'center' }}
             {...(!isAiMode ? { 'data-hud-search': 'true' } : {})}
           />
           {/* Rotating hint — only shown when idle in normal search mode */}
