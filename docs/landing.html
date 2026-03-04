@@ -1698,6 +1698,7 @@
         window.addEventListener('scroll', () => { nav.classList.toggle('scrolled', window.scrollY > 20) }, { passive: true });
         const observer = new IntersectionObserver(e => { e.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }) }, { threshold: .1, rootMargin: '0px 0px -40px 0px' });
         document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+        document.querySelectorAll('video').forEach(v => v.playbackRate = 1.25);
         document.querySelectorAll('.faq-question').forEach(btn => { btn.addEventListener('click', () => { const item = btn.parentElement; const isActive = item.classList.contains('active'); document.querySelectorAll('.faq-item.active').forEach(o => { o.classList.remove('active'); o.querySelector('.faq-question').setAttribute('aria-expanded', 'false') }); if (!isActive) { item.classList.add('active'); btn.setAttribute('aria-expanded', 'true') } }) });
         document.querySelectorAll('a[href^="#"]').forEach(a => { a.addEventListener('click', e => { const t = document.querySelector(a.getAttribute('href')); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }) } }) });
     </script>

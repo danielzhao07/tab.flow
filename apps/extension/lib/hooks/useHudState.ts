@@ -97,6 +97,7 @@ export interface HudState {
   // Fetch
   fetchTabs: () => Promise<void>;
   fetchRecentTabs: () => Promise<void>;
+  loadUndoStack: () => void;
   // Deduplication ref: tracks tab IDs closed by the extension (so 'tab-removed' handler skips them)
   pendingExtensionCloseIdsRef: React.MutableRefObject<Set<number>>;
 }
@@ -124,6 +125,29 @@ export function useHudState(): HudState {
   const [closingTabIds, setClosingTabIds] = useState<Set<number>>(new Set());
   const [undoStack, setUndoStack] = useState<UndoRecord[]>([]);
   const pendingExtensionCloseIdsRef = useRef<Set<number>>(new Set());
+
+  // Track whether the initial storage load has completed so we don't overwrite
+  // stored records with the empty initial state.
+  const undoStackReady = useRef(false);
+
+  const loadUndoStack = useCallback(() => {
+    chrome.storage.local.get('tabflow_undo_stack').then((result) => {
+      if (Array.isArray(result.tabflow_undo_stack)) {
+        setUndoStack(result.tabflow_undo_stack as UndoRecord[]);
+      }
+      undoStackReady.current = true;
+    }).catch(() => { undoStackReady.current = true; });
+  }, []);
+
+  // Load once on mount
+  useEffect(() => { loadUndoStack(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist whenever the stack changes, but only after the initial load has completed
+  // to avoid saving the empty initial state over real stored records.
+  useEffect(() => {
+    if (!undoStackReady.current) return;
+    chrome.storage.local.set({ tabflow_undo_stack: undoStack }).catch(() => {});
+  }, [undoStack]);
 
   const hide = useCallback(() => {
     setAnimatingIn(false);
@@ -239,7 +263,7 @@ export function useHudState(): HudState {
     thumbnails, setThumbnails,
     displayTabs, duplicateMap, duplicateUrls, duplicateCount,
     isCommandMode, commandQuery,
-    fetchTabs, fetchRecentTabs,
+    fetchTabs, fetchRecentTabs, loadUndoStack,
     pendingExtensionCloseIdsRef,
   };
 }

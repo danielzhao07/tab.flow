@@ -18,6 +18,7 @@ import { checkHealth } from '@/lib/api-client';
 import { getStoredTokens, type TokenSet } from '@/lib/auth';
 import { AiAgentPanel, AiThinkingBar } from './AiAgentPanel';
 import type { AgentResult, AgentAction } from '@/lib/agent';
+import type { TabInfo } from '@/lib/types';
 
 export function HudOverlay() {
   const s = useHudState();
@@ -84,6 +85,9 @@ export function HudOverlay() {
             s.fetchTabs();
             s.fetchRecentTabs();
             loadHudData(s);
+            // Reload undo stack from storage so Ctrl+Z always works, even after
+            // tab switches or extended periods of inactivity.
+            s.loadUndoStack();
             // Reload prompt history from storage in case another tab updated it
             chrome.storage.local.get('tabflow_prompt_history').then((result) => {
               if (Array.isArray(result.tabflow_prompt_history)) {
@@ -279,6 +283,15 @@ export function HudOverlay() {
       const result: AgentResult = { message: res.message, actions: res.actions ?? [] };
       setAgentResult(result);
       setAiPending(false);
+
+      // Snapshot full tab state before AI execution for undo
+      const tabsBefore = new Map(s.tabs.map((t) => [t.tabId, {
+        url: t.url,
+        groupId: t.groupId, groupTitle: t.groupTitle || '', groupColor: t.groupColor || '',
+        isPinned: t.isPinned, isMuted: t.isMuted, isDiscarded: t.isDiscarded,
+        windowId: t.windowId,
+      }]));
+
       // Suppress all intermediate tab refetches during action execution
       // so the grid only reflows once at the end
       aiExecutingRef.current = true;
@@ -289,6 +302,102 @@ export function HudOverlay() {
       aiExecutingRef.current = false;
       // Single fetch after all actions complete — one reflow
       await s.fetchTabs();
+
+      // Build a single undo record by diffing before/after state
+      const tabsAfterRes = await chrome.runtime.sendMessage({ type: 'get-tabs' });
+      const tabsAfter: TabInfo[] = tabsAfterRes?.tabs ?? [];
+      const afterMap = new Map(tabsAfter.map((t: TabInfo) => [t.tabId, t]));
+
+      // Newly opened tabs (exist after but not before) → undo = close them
+      const openedTabIds: number[] = [];
+      for (const t of tabsAfter) {
+        if (!tabsBefore.has(t.tabId)) openedTabIds.push(t.tabId);
+      }
+      // Closed tabs (existed before but gone now) → undo = reopen by URL
+      const closedUrls: string[] = [];
+      for (const [tabId, before] of tabsBefore) {
+        if (!afterMap.has(tabId) && before.url) closedUrls.push(before.url);
+      }
+      // Newly grouped (wasn't in a group before, now is) → undo = ungroup
+      const newlyGrouped: number[] = [];
+      for (const t of tabsAfter) {
+        const before = tabsBefore.get(t.tabId);
+        if (t.groupId && before && !before.groupId) newlyGrouped.push(t.tabId);
+      }
+      // Newly ungrouped (was in a group before, now isn't) → undo = re-group
+      const newlyUngrouped = new Map<number, { groupId: number; tabIds: number[]; groupTitle: string; groupColor: string }>();
+      for (const [tabId, before] of tabsBefore) {
+        const after = afterMap.get(tabId);
+        if (before.groupId && after && !after.groupId) {
+          const g = newlyUngrouped.get(before.groupId);
+          if (g) g.tabIds.push(tabId);
+          else newlyUngrouped.set(before.groupId, { groupId: before.groupId, tabIds: [tabId], groupTitle: before.groupTitle, groupColor: before.groupColor });
+        }
+      }
+      // Pin changes → undo = restore original pin state
+      const pinChanges: Array<{ tabId: number; wasPinned: boolean }> = [];
+      for (const [tabId, before] of tabsBefore) {
+        const after = afterMap.get(tabId);
+        if (after && after.isPinned !== before.isPinned) {
+          pinChanges.push({ tabId, wasPinned: before.isPinned });
+        }
+      }
+      // Mute changes → undo = restore original mute state
+      const muteChanges: Array<{ tabId: number; wasMuted: boolean }> = [];
+      for (const [tabId, before] of tabsBefore) {
+        const after = afterMap.get(tabId);
+        if (after && after.isMuted !== before.isMuted) {
+          muteChanges.push({ tabId, wasMuted: before.isMuted });
+        }
+      }
+      // Discarded/suspended tabs → undo = reload them
+      const discardedTabIds: number[] = [];
+      for (const [tabId, before] of tabsBefore) {
+        const after = afterMap.get(tabId);
+        if (after && after.isDiscarded && !before.isDiscarded) {
+          discardedTabIds.push(tabId);
+        }
+      }
+      // Moved tabs (windowId changed) → undo = move back
+      const movedTabs: Array<{ tabId: number; originalWindowId: number }> = [];
+      for (const [tabId, before] of tabsBefore) {
+        const after = afterMap.get(tabId);
+        if (after && after.windowId !== before.windowId) {
+          movedTabs.push({ tabId, originalWindowId: before.windowId });
+        }
+      }
+
+      const hasChanges = closedUrls.length > 0 || openedTabIds.length > 0 ||
+        newlyGrouped.length > 0 || newlyUngrouped.size > 0 ||
+        pinChanges.length > 0 || muteChanges.length > 0 ||
+        discardedTabIds.length > 0 || movedTabs.length > 0;
+
+      if (hasChanges) {
+        const batchRecord = {
+          type: 'ai-batch' as const,
+          label: `AI: ${query.length > 30 ? query.slice(0, 30) + '…' : query}`,
+          timestamp: Date.now(),
+          closedUrls,
+          openedTabIds,
+          grouped: newlyGrouped,
+          ungrouped: [...newlyUngrouped.values()],
+          pinChanges,
+          muteChanges,
+          discardedTabIds,
+          movedTabs,
+        };
+        // Replace the entire stack: drop any individual records pushed by
+        // sub-actions during AI execution and prepend the single batch record.
+        const stored = await chrome.storage.local.get('tabflow_undo_stack').catch(() => ({}));
+        const existingStack: UndoRecord[] = Array.isArray((stored as Record<string, unknown>).tabflow_undo_stack)
+          ? (stored as Record<string, unknown>).tabflow_undo_stack as UndoRecord[] : [];
+        // Filter out any records created DURING this AI execution (by timestamp)
+        const preAiStack = existingStack.filter((r) => r.timestamp < batchRecord.timestamp - 30_000);
+        const newStack = [batchRecord, ...preAiStack].slice(0, 20);
+        s.setUndoStack(newStack);
+        s.setUndoToast({ message: batchRecord.label });
+      }
+
       chrome.runtime.sendMessage({ type: 'get-windows' }).then((windowsRes) => {
         if (windowsRes?.windows) s.setOtherWindows(windowsRes.windows);
       }).catch(() => {});

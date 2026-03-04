@@ -113,6 +113,78 @@ export function getGroupTitle(domain: string): string {
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : domain;
 }
 
+// ── Smart group naming ──────────────────────────────────────────────────────
+
+/**
+ * Generate a smart group name by analyzing tab titles, URLs, and optional meta descriptions.
+ * Priority: shared bigram → shared keyword → description keywords → URL path segment → domain.
+ * @param tabs The tabs to name the group for
+ * @param descriptions Optional map of tabId → meta description / h1 text from the page
+ */
+export function getSmartGroupName(tabs: TabInfo[], descriptions?: Record<number, string>): string {
+  if (tabs.length === 0) return '';
+  if (tabs.length === 1) return getGroupTitle(getDomain(tabs[0].url));
+
+  // Combine title + description into a single text per tab for richer keyword extraction
+  const textForTab = (tab: TabInfo): string => {
+    const desc = descriptions?.[tab.tabId];
+    return desc ? `${tab.title} ${desc}` : tab.title;
+  };
+
+  // 1. Try shared bigrams across tab titles + descriptions (most descriptive)
+  const bigramCounts = new Map<string, number>();
+  for (const tab of tabs) {
+    for (const bg of new Set(titleBigrams(textForTab(tab)))) {
+      bigramCounts.set(bg, (bigramCounts.get(bg) ?? 0) + 1);
+    }
+  }
+  const bestBigram = [...bigramCounts.entries()]
+    .filter(([, c]) => c >= 2 && c >= tabs.length * 0.4)
+    .sort((a, b) => b[1] - a[1])[0];
+  if (bestBigram) return capitalize(bestBigram[0]);
+
+  // 2. Try shared keywords across titles + descriptions
+  const wordCounts = new Map<string, number>();
+  for (const tab of tabs) {
+    for (const w of new Set(titleKeywords(textForTab(tab)))) {
+      wordCounts.set(w, (wordCounts.get(w) ?? 0) + 1);
+    }
+  }
+  const bestWord = [...wordCounts.entries()]
+    .filter(([, c]) => c >= 2 && c >= tabs.length * 0.4)
+    .sort((a, b) => b[1] - a[1])[0];
+  if (bestWord) return capitalize(bestWord[0]);
+
+  // 3. Try shared URL path segments (e.g. /docs/, /api/, /learn/)
+  const pathSegCounts = new Map<string, number>();
+  for (const tab of tabs) {
+    try {
+      const segments = new URL(tab.url).pathname.split('/').filter((s) => s.length >= 3 && !/^\d+$/.test(s));
+      for (const seg of new Set(segments)) {
+        const clean = seg.replace(/[-_]/g, ' ').toLowerCase();
+        if (!STOP_WORDS.has(clean) && clean.length >= 3) {
+          pathSegCounts.set(clean, (pathSegCounts.get(clean) ?? 0) + 1);
+        }
+      }
+    } catch { /* ignore invalid URLs */ }
+  }
+  const bestSeg = [...pathSegCounts.entries()]
+    .filter(([, c]) => c >= 2 && c >= tabs.length * 0.4)
+    .sort((a, b) => b[1] - a[1])[0];
+  if (bestSeg) return capitalize(bestSeg[0]);
+
+  // 4. Domain fallback — use the most common domain
+  const domainCounts = new Map<string, number>();
+  for (const tab of tabs) {
+    const d = getDomain(tab.url);
+    if (d) domainCounts.set(d, (domainCounts.get(d) ?? 0) + 1);
+  }
+  let topDomain = '';
+  let topCount = 0;
+  for (const [d, c] of domainCounts) { if (c > topCount) { topDomain = d; topCount = c; } }
+  return getGroupTitle(topDomain);
+}
+
 // ── Smart group suggestions ──────────────────────────────────────────────────
 
 // Words that are too generic to form a meaningful cluster label
@@ -171,19 +243,21 @@ export interface SmartSuggestion {
  * Suggests tab groups smarter than pure-domain clustering.
  * Priority: bigram keyword clusters → unigram keyword clusters → domain fallback.
  * Tabs already in a group are excluded. At most 4 suggestions returned.
+ * @param descriptions Optional map of tabId → meta description text for richer context
  */
-export function getSmartSuggestions(tabs: TabInfo[], existingTitles: Set<string>): SmartSuggestion[] {
-  // Build inverted indexes
+export function getSmartSuggestions(tabs: TabInfo[], existingTitles: Set<string>, descriptions?: Record<number, string>): SmartSuggestion[] {
+  // Build inverted indexes using titles + descriptions
   const bigramMap = new Map<string, TabInfo[]>();
   const wordMap = new Map<string, TabInfo[]>();
 
   for (const tab of tabs) {
-    for (const bg of new Set(titleBigrams(tab.title))) {
+    const text = descriptions?.[tab.tabId] ? `${tab.title} ${descriptions[tab.tabId]}` : tab.title;
+    for (const bg of new Set(titleBigrams(text))) {
       const list = bigramMap.get(bg) ?? [];
       list.push(tab);
       bigramMap.set(bg, list);
     }
-    for (const w of new Set(titleKeywords(tab.title))) {
+    for (const w of new Set(titleKeywords(text))) {
       const list = wordMap.get(w) ?? [];
       list.push(tab);
       wordMap.set(w, list);

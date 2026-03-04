@@ -37,4 +37,14 @@ export type UndoRecord = {
   | { type: 'mute'; tabIds: number[]; wasMuted: boolean }
   | { type: 'group'; tabIds: number[] }
   | { type: 'ungroup'; groups: Array<{ groupId: number; tabIds: number[]; groupTitle: string; groupColor: string }> }
+  | { type: 'ai-batch';
+      closedUrls: string[];
+      openedTabIds: number[];
+      grouped: number[];
+      ungrouped: Array<{ groupId: number; tabIds: number[]; groupTitle: string; groupColor: string }>;
+      pinChanges: Array<{ tabId: number; wasPinned: boolean }>;
+      muteChanges: Array<{ tabId: number; wasMuted: boolean }>;
+      discardedTabIds: number[];
+      movedTabs: Array<{ tabId: number; originalWindowId: number }>;
+    }
 );

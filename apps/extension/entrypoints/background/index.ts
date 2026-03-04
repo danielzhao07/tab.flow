@@ -65,6 +65,8 @@ function persistThumbnails() {
 
 // Track whether the HUD overlay is currently visible (skip captures while it's showing)
 let hudVisible = false;
+// The tab ID that currently has the HUD open — used to reopen HUD if this tab closes
+let hudTabId: number | undefined;
 // Timestamp of the last HUD hide — captures are blocked for 500ms after hiding
 // to generously cover the 180ms CSS fade-out animation and any async timing slack.
 let hudHideTime = 0;
@@ -222,6 +224,31 @@ export default defineBackground(() => {
     await removeTab(tabId);
     if (tabThumbnails.delete(tabId)) persistThumbnails();
     broadcastSpecific({ type: 'tab-removed', tabId, title: closedTitle });
+
+    // If the HUD was open on the tab that just closed, reopen it on the new active tab
+    if (hudVisible && hudTabId === tabId) {
+      hudTabId = undefined;
+      // Brief delay so Chrome finishes activating the next tab
+      setTimeout(async () => {
+        try {
+          const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+          if (activeTab?.id && canSendMessage(activeTab.url)) {
+            hudTabId = activeTab.id;
+            chrome.tabs.sendMessage(activeTab.id, { type: 'toggle-hud' }).catch(() => {
+              hudVisible = false;
+              hudTabId = undefined;
+              hudHideTime = Date.now();
+            });
+          } else {
+            hudVisible = false;
+            hudHideTime = Date.now();
+          }
+        } catch {
+          hudVisible = false;
+          hudHideTime = Date.now();
+        }
+      }, 150);
+    }
   });
 
   // Live group name/color changes — update all affected tabs in MRU and notify HUD
@@ -305,6 +332,7 @@ export default defineBackground(() => {
         // Close the HUD on the current tab if it's open
         if (hudVisible && activeTabId) {
           hudVisible = false;
+          hudTabId = undefined;
           hudHideTime = Date.now();
           chrome.tabs.sendMessage(activeTabId, { type: 'hide-hud' }).catch(() => {});
         }
@@ -330,8 +358,10 @@ export default defineBackground(() => {
         setTimeout(() => {
           if (pendingToggleId !== myToggleId) return;
           hudVisible = true;
+          hudTabId = realTab.tabId;
           chrome.tabs.sendMessage(realTab.tabId, { type: 'toggle-hud' }).catch(() => {
             hudVisible = false;
+            hudTabId = undefined;
           });
         }, 120);
         return;
@@ -346,10 +376,12 @@ export default defineBackground(() => {
         }
         const wasVisible = hudVisible;
         hudVisible = !hudVisible;
+        hudTabId = hudVisible ? activeTab.id : undefined;
         if (wasVisible) hudHideTime = Date.now(); // stamp hide time for grace period
         chrome.tabs.sendMessage(activeTab.id, { type: 'toggle-hud' }).catch(() => {
           // Content script not loaded on this tab
           hudVisible = false;
+          hudTabId = undefined;
           hudHideTime = Date.now();
         });
       }
@@ -443,7 +475,7 @@ export default defineBackground(() => {
     }
 
     if (message.type === 'open-url') {
-      chrome.tabs.create({ url: message.payload.url }).catch(() => {});
+      chrome.tabs.create({ url: message.payload.url, active: false }).catch(() => {});
     }
 
     if (message.type === 'close-tab') {
@@ -697,7 +729,6 @@ export default defineBackground(() => {
     }
 
     if (message.type === 'reopen-last-closed') {
-      const keepFocus = message.payload?.keepFocus === true;
       const senderTabId = sender.tab?.id;
       const senderWindowId = sender.tab?.windowId;
       chrome.sessions.getRecentlyClosed({ maxResults: 1 }).then((sessions) => {
@@ -705,18 +736,18 @@ export default defineBackground(() => {
           const session = sessions[0];
           const sessionId = session.tab?.sessionId ?? session.window?.sessionId;
           if (sessionId) {
-            chrome.sessions.restore(sessionId).then(() => {
-              // If keepFocus is set, switch back to the tab/window that triggered the undo
-              // so the user stays on the same page with the HUD still visible.
-              if (keepFocus && senderTabId != null) {
-                chrome.tabs.update(senderTabId, { active: true }).then(() => {
-                  if (senderWindowId != null) {
-                    chrome.windows.update(senderWindowId, { focused: true }).catch(() => {});
-                  }
-                }).catch(() => {});
+            chrome.sessions.restore(sessionId).then((restored) => {
+              // Immediately deactivate the restored tab and reactivate the HUD tab
+              // in parallel — eliminates the focus-flip flicker when restoring multiple tabs.
+              const restoredTabId = restored?.tab?.id;
+              const ops: Promise<unknown>[] = [];
+              if (restoredTabId) ops.push(chrome.tabs.update(restoredTabId, { active: false }).catch(() => {}));
+              if (senderTabId != null) {
+                ops.push(chrome.tabs.update(senderTabId, { active: true }).catch(() => {}));
+                if (senderWindowId != null) ops.push(chrome.windows.update(senderWindowId, { focused: true }).catch(() => {}));
               }
-              sendResponse({ success: true });
-            });
+              return Promise.all(ops);
+            }).then(() => sendResponse({ success: true }));
           } else {
             sendResponse({ success: false });
           }
@@ -980,6 +1011,7 @@ export default defineBackground(() => {
     // HUD visibility tracking — so we skip thumbnail captures while HUD is showing
     if (message.type === 'hud-closed') {
       hudVisible = false;
+      hudTabId = undefined;
       hudHideTime = Date.now(); // start grace period so captures don't catch the fade-out
       sendResponse({ success: true });
       return true;
@@ -1047,6 +1079,35 @@ export default defineBackground(() => {
     // (in the toggle handler) so the cache is already fresh here.
     if (message.type === 'get-all-thumbnails') {
       sendResponse({ thumbnails: Object.fromEntries(tabThumbnails) });
+    }
+
+    // Extract meta descriptions + og:description + h1 from specific tabs
+    if (message.type === 'get-tab-descriptions') {
+      const tabIds: number[] = message.payload?.tabIds ?? [];
+      (async () => {
+        const descriptions: Record<number, string> = {};
+        await Promise.all(tabIds.map(async (tabId) => {
+          try {
+            const results = await chrome.scripting.executeScript({
+              target: { tabId },
+              func: () => {
+                const meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+                const og = document.querySelector('meta[property="og:description"]') as HTMLMetaElement | null;
+                const h1 = document.querySelector('h1');
+                const parts: string[] = [];
+                if (meta?.content) parts.push(meta.content.slice(0, 200));
+                else if (og?.content) parts.push(og.content.slice(0, 200));
+                if (h1?.textContent) parts.push(h1.textContent.trim().slice(0, 100));
+                return parts.join(' | ');
+              },
+            });
+            const text = results?.[0]?.result;
+            if (text) descriptions[tabId] = text;
+          } catch { /* tab can't be scripted (chrome://, etc.) */ }
+        }));
+        sendResponse({ descriptions });
+      })();
+      return true;
     }
 
     // Quick-switch: toggle between last two tabs

@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import type { TabBookmark } from '@/lib/bookmarks';
-import type { UndoRecord } from '@/lib/types';
+import type { UndoRecord, TabInfo } from '@/lib/types';
 import type { HudState } from './useHudState';
-import { getDomain, getGroupTitle } from '@/lib/group-utils';
+import { getDomain, getGroupTitle, getSmartGroupName } from '@/lib/group-utils';
 
 export interface TabActions {
   switchToTab: (tabId: number) => void;
@@ -170,19 +170,16 @@ export function useTabActions(s: HudState): TabActions {
   const groupSelectedTabs = useCallback(async () => {
     if (s.selectedTabs.size === 0) return;
     const tabIds = [...s.selectedTabs];
-    const domainCounts = new Map<string, number>();
-    for (const id of tabIds) {
-      const tab = s.tabs.find((t) => t.tabId === id);
-      const d = getDomain(tab?.url ?? '');
-      domainCounts.set(d, (domainCounts.get(d) ?? 0) + 1);
-    }
-    let topDomain = '';
-    let topCount = 0;
-    for (const [d, c] of domainCounts) { if (c > topCount) { topDomain = d; topCount = c; } }
+    const selectedTabInfos = tabIds.map((id) => s.tabs.find((t) => t.tabId === id)).filter(Boolean) as TabInfo[];
+    // Fetch meta descriptions from pages for richer context
+    const descRes = await chrome.runtime.sendMessage({ type: 'get-tab-descriptions', payload: { tabIds } }).catch(() => null);
+    const descriptions: Record<number, string> = descRes?.descriptions ?? {};
+    const title = getSmartGroupName(selectedTabInfos, descriptions);
+    const topDomain = getDomain(selectedTabInfos[0]?.url ?? '');
     const usedColors = new Set(s.tabs.filter((t) => t.groupColor).map((t) => t.groupColor!));
     const color = pickGroupColor(topDomain, usedColors);
     pushUndo({ type: 'group', label: `Grouped ${tabIds.length} tabs`, timestamp: Date.now(), tabIds });
-    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds, title: getGroupTitle(topDomain), color } });
+    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds, title, color } });
     s.setSelectedTabs(new Set());
     s.fetchTabs();
   }, [s, pushUndo]);
@@ -281,10 +278,12 @@ export function useTabActions(s: HudState): TabActions {
     s.fetchTabs();
   }, [s]);
 
-  const groupSuggestionTabs = useCallback(async (tabIds: number[], domain: string) => {
+  const groupSuggestionTabs = useCallback(async (tabIds: number[], label: string) => {
+    const firstTab = s.tabs.find((t) => t.tabId === tabIds[0]);
+    const topDomain = getDomain(firstTab?.url ?? '');
     const usedColors = new Set(s.tabs.filter((t) => t.groupColor).map((t) => t.groupColor!));
-    const color = pickGroupColor(domain, usedColors);
-    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds, title: getGroupTitle(domain), color } });
+    const color = pickGroupColor(topDomain, usedColors);
+    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds, title: label, color } });
     await new Promise<void>((r) => setTimeout(r, 150));
     s.fetchTabs();
   }, [s]);
@@ -333,10 +332,11 @@ export function useTabActions(s: HudState): TabActions {
     const tab = s.tabs.find((t) => t.tabId === tabId);
     if (!tab) return;
     pushUndo({ type: 'group', label: 'Grouped tab', timestamp: Date.now(), tabIds: [tabId] });
+    const title = getSmartGroupName([tab]);
     const domain = getDomain(tab.url);
     const usedColors = new Set(s.tabs.filter((t) => t.groupColor).map((t) => t.groupColor!));
     const color = pickGroupColor(domain, usedColors);
-    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds: [tabId], title: getGroupTitle(domain), color } });
+    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds: [tabId], title, color } });
     s.fetchTabs();
   }, [s, pushUndo]);
 
@@ -391,15 +391,19 @@ export function useTabActions(s: HudState): TabActions {
   }, [s]);
 
   const undo = useCallback(async () => {
-    // Read the latest stack via the functional updater to avoid stale closures
-    // (e.g. Ctrl+Z pressed before React re-renders after pushUndo).
-    let record: UndoRecord | undefined;
-    s.setUndoStack((prev) => {
-      if (prev.length === 0) return prev;
-      record = prev[0];
-      return prev.slice(1);
-    });
-    if (!record) return;
+    // Always read the undo stack fresh from chrome.storage — this guarantees
+    // Ctrl+Z works regardless of how long ago the action occurred, which tab
+    // the user is on, or whether the React state is stale.
+    const stored = await chrome.storage.local.get('tabflow_undo_stack').catch(() => ({}));
+    const stack: UndoRecord[] = Array.isArray((stored as Record<string, unknown>).tabflow_undo_stack)
+      ? (stored as Record<string, unknown>).tabflow_undo_stack as UndoRecord[] : [];
+    if (stack.length === 0) return;
+
+    const record = stack[0];
+    const remaining = stack.slice(1);
+    // Persist the popped stack immediately so subsequent Ctrl+Z presses see it
+    await chrome.storage.local.set({ tabflow_undo_stack: remaining }).catch(() => {});
+    s.setUndoStack(remaining);
     s.setUndoToast(null);
 
     switch (record.type) {
@@ -420,11 +424,9 @@ export function useTabActions(s: HudState): TabActions {
       }
       case 'bookmark':
         if (record.wasBookmarked) {
-          // Action was "remove bookmark" → undo = re-add
           const res = await chrome.runtime.sendMessage({ type: 'add-bookmark', payload: { url: record.url, title: record.title, faviconUrl: record.faviconUrl } });
           if (res?.bookmarks) s.setBookmarkedUrls(new Set(res.bookmarks.map((b: TabBookmark) => b.url)));
         } else {
-          // Action was "add bookmark" → undo = remove
           const res = await chrome.runtime.sendMessage({ type: 'remove-bookmark', payload: { url: record.url } });
           if (res?.bookmarks) s.setBookmarkedUrls(new Set(res.bookmarks.map((b: TabBookmark) => b.url)));
         }
@@ -438,19 +440,59 @@ export function useTabActions(s: HudState): TabActions {
         break;
       }
       case 'group':
-        // Action was "group tabs" → undo = ungroup
         await chrome.runtime.sendMessage({ type: 'ungroup-tabs', payload: { tabIds: record.tabIds } });
         s.fetchTabs();
         break;
       case 'ungroup':
-        // Restore each original group — pass the original groupId so tabs merge back into
-        // the existing group rather than creating a new one. If the group was fully dissolved,
-        // the background falls back to creating a new group with the same title/color.
         for (const g of record.groups) {
           await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds: g.tabIds, title: g.groupTitle, color: g.groupColor, groupId: g.groupId } });
         }
         s.fetchTabs();
         break;
+      case 'ai-batch': {
+        // Undo everything the AI did in one shot
+        // 1. Close tabs that were opened by the AI
+        for (const tabId of record.openedTabIds) {
+          await chrome.runtime.sendMessage({ type: 'close-tab', payload: { tabId } }).catch(() => {});
+        }
+        // 2. Reopen tabs that were closed by the AI (by URL — survives chrome.sessions purge)
+        for (const url of (record.closedUrls ?? [])) {
+          await chrome.runtime.sendMessage({ type: 'open-url', payload: { url } }).catch(() => {});
+        }
+        // 2b. Legacy fallback: if record only has closedCount (old format), use sessions
+        if (!(record as { closedUrls?: string[] }).closedUrls && (record as { closedCount?: number }).closedCount) {
+          for (let i = 0; i < (record as { closedCount: number }).closedCount; i++) {
+            await chrome.runtime.sendMessage({ type: 'reopen-last-closed', payload: { keepFocus: true } }).catch(() => {});
+          }
+        }
+        // 3. Ungroup tabs that were grouped by the AI
+        if (record.grouped.length > 0) {
+          await chrome.runtime.sendMessage({ type: 'ungroup-tabs', payload: { tabIds: record.grouped } }).catch(() => {});
+        }
+        // 4. Re-group tabs that were ungrouped by the AI
+        for (const g of record.ungrouped) {
+          await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds: g.tabIds, title: g.groupTitle, color: g.groupColor, groupId: g.groupId } }).catch(() => {});
+        }
+        // 5. Restore pin states
+        for (const { tabId, wasPinned } of record.pinChanges) {
+          await chrome.runtime.sendMessage({ type: 'pin-tab', payload: { tabId, pinned: wasPinned } }).catch(() => {});
+        }
+        // 6. Restore mute states
+        for (const { tabId, wasMuted } of record.muteChanges) {
+          await chrome.runtime.sendMessage({ type: 'mute-tab', payload: { tabId, muted: wasMuted } }).catch(() => {});
+        }
+        // 7. Reload tabs that were discarded/suspended
+        for (const tabId of record.discardedTabIds) {
+          await chrome.runtime.sendMessage({ type: 'reload-tab', payload: { tabId } }).catch(() => {});
+        }
+        // 8. Move tabs back to original windows
+        for (const { tabId, originalWindowId } of record.movedTabs) {
+          await chrome.runtime.sendMessage({ type: 'move-to-window', payload: { tabId, windowId: originalWindowId } }).catch(() => {});
+        }
+        s.fetchTabs();
+        s.fetchRecentTabs();
+        break;
+      }
     }
   }, [s]);
 
