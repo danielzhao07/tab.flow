@@ -47,7 +47,7 @@
 
 ### Overview
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/e52b9b44-9b89-4509-a39d-53af0aa8dc65
 
 ---
 
@@ -55,7 +55,7 @@ VIDEO_URL_HERE
 
 See every open tab at a glance. One shortcut opens a stunning full screen view of your entire browser, beautifully laid out and ready to explore.
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/f72c3d63-ea64-4318-8503-1d089ae1ce7a
 
 ---
 
@@ -63,7 +63,7 @@ VIDEO_URL_HERE
 
 Can't find the right tab? Just start typing. tab.flow's fuzzy search instantly finds what you need, even if you only remember part of the name. No more clicking through tabs one by one.
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/d0fc4205-6c1c-43f8-86e4-90386e4fb07a
 
 ---
 
@@ -71,7 +71,7 @@ VIDEO_URL_HERE
 
 Just tell **flow** what you need. Group your work tabs, close everything from yesterday, or save this session for later. **flow** handles the rest. Powered by Groq's LLaMA 3.3 70B with 21 action types.
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/e2f31015-b7b6-4a8f-9764-ff76c44cc7d2
 
 ---
 
@@ -79,7 +79,7 @@ VIDEO_URL_HERE
 
 tab.flow spots patterns in your browsing and suggests smart groups automatically. One click to organize, with brand aware colors that make sense at a glance.
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/39fa300b-2aec-47fa-a12f-cfd45b21d2e2
 
 ---
 
@@ -87,7 +87,7 @@ VIDEO_URL_HERE
 
 Juggling school, work, and weekend plans? Save your tabs as a workspace and switch between them instantly. Pick up right where you left off, every time.
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/429336e1-a907-4907-be46-16db6d463a2e
 
 ---
 
@@ -95,7 +95,7 @@ VIDEO_URL_HERE
 
 Type `>` to access powerful commands instantly. Close duplicates, sort tabs, pin groups, and more. Full keyboard navigation keeps you in the flow.
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/d3026008-fcb8-4142-b2c2-44158597da4e
 
 ---
 
