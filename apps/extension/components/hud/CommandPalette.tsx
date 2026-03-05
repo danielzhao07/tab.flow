@@ -90,11 +90,11 @@ export function CommandPalette({ query, commands, onClose }: CommandPaletteProps
   }
 
   return (
-    <div ref={listRef} className="h-full overflow-y-auto py-1" style={{ maxHeight: '100%' }}>
+    <div ref={listRef} className="h-full overflow-y-auto flex flex-col justify-evenly" style={{ maxHeight: '100%' }}>
       {filtered.map((cmd, index) => (
         <div
           key={cmd.id}
-          className={`flex items-center gap-3 px-5 py-2.5 cursor-pointer transition-all duration-100 ${
+          className={`flex items-center gap-3 px-5 py-2 cursor-pointer transition-all duration-100 ${
             index === selectedIndex
               ? 'bg-white/[0.12] border-l-2 border-l-purple-400'
               : 'hover:bg-white/[0.06] border-l-2 border-l-transparent'
@@ -102,11 +102,6 @@ export function CommandPalette({ query, commands, onClose }: CommandPaletteProps
           onClick={() => { cmd.action(); onClose(); }}
           onMouseEnter={() => setSelectedIndex(index)}
         >
-          <div className="w-6 h-6 rounded-md bg-purple-400/15 flex items-center justify-center shrink-0">
-            <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
           <div className="flex-1 min-w-0">
             <span className="text-[13px] text-white/90">{cmd.label}</span>
             <p className="text-[11px] text-white/30 truncate">{cmd.description}</p>

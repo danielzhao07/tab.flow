@@ -1,1036 +1,1837 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>tab.flow — Tab Management, Reimagined</title>
-  <meta name="description" content="A full-screen HUD overlay that replaces Chrome's tab switcher. AI assistant, fuzzy search, smart grouping, keyboard navigation — all free." />
-  <link rel="icon" href="TabFlowV4.png" type="image/png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:       #050508;
-      --bg-2:     #0a0a10;
-      --surface:  rgba(255,255,255,0.04);
-      --border:   rgba(255,255,255,0.08);
-      --blue:     #3b82f6;
-      --purple:   #a78bfa;
-      --green:    #34d399;
-      --text:     rgba(255,255,255,0.90);
-      --text-2:   rgba(255,255,255,0.70);
-      --muted:    rgba(255,255,255,0.40);
-      --nav-h:    64px;
-      --max-w:    1200px;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 16px;
-      line-height: 1.65;
-      overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* ═══════════════════════════════════════════════════════
-       NAV
-       ═══════════════════════════════════════════════════════ */
-    nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: var(--nav-h);
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.3s, box-shadow 0.3s;
-    }
-    nav.scrolled {
-      background: rgba(5,5,8,0.82);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      box-shadow: 0 1px 0 var(--border);
-    }
-    .nav-inner {
-      width: 100%;
-      max-width: var(--max-w);
-      padding: 0 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
-    .nav-brand img {
-      width: 36px; height: 36px;
-    }
-    .nav-brand span {
-      font-weight: 700;
-      font-size: 20px;
-      color: var(--text);
-      letter-spacing: -0.03em;
-    }
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
-    .nav-links a {
-      color: var(--text-2);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
-    .nav-links a:hover { color: var(--text); }
-    .nav-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 20px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--blue), var(--purple));
-      color: #fff;
-      font-size: 14px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: box-shadow 0.2s, transform 0.15s;
-    }
-    .nav-cta:hover {
-      box-shadow: 0 4px 20px rgba(59,130,246,0.35);
-      transform: translateY(-1px);
-    }
-    .nav-cta svg { width: 16px; height: 16px; }
-
-    /* ═══════════════════════════════════════════════════════
-       HERO
-       ═══════════════════════════════════════════════════════ */
-    .hero {
-      padding: calc(var(--nav-h) + 80px) 32px 100px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    /* Ambient glow behind hero */
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: -40%; left: 50%;
-      transform: translateX(-50%);
-      width: 900px; height: 600px;
-      background: radial-gradient(ellipse, rgba(59,130,246,0.10) 0%, rgba(167,139,250,0.06) 40%, transparent 70%);
-      pointer-events: none;
-      filter: blur(60px);
-    }
-
-    .hero-logo {
-      width: 120px; height: 120px;
-      margin: 0 auto 32px;
-      display: block;
-      position: relative;
-      z-index: 1;
-      filter: drop-shadow(0 0 40px rgba(59,130,246,0.25));
-    }
-
-    .hero h1 {
-      font-size: clamp(40px, 7vw, 72px);
-      font-weight: 900;
-      letter-spacing: -0.045em;
-      line-height: 1.05;
-      margin-bottom: 24px;
-      position: relative;
-      z-index: 1;
-    }
-    .hero h1 .accent {
-      background: linear-gradient(120deg, var(--blue) 20%, var(--purple) 80%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .hero-sub {
-      font-size: clamp(16px, 2.5vw, 20px);
-      color: var(--text-2);
-      max-width: 600px;
-      margin: 0 auto 40px;
-      position: relative;
-      z-index: 1;
-      line-height: 1.6;
-    }
-
-    .hero-buttons {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      margin-bottom: 32px;
-      position: relative;
-      z-index: 1;
-      flex-wrap: wrap;
-    }
-
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 18px 36px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
-      color: #fff;
-      font-size: 18px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: box-shadow 0.25s, transform 0.15s;
-      border: none;
-      cursor: pointer;
-    }
-    .btn-primary:hover {
-      box-shadow: 0 8px 40px rgba(59,130,246,0.4);
-      transform: translateY(-2px);
-    }
-    .btn-primary svg { width: 22px; height: 22px; }
-
-    .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 18px 36px;
-      border-radius: 14px;
-      background: transparent;
-      border: 1.5px solid var(--border);
-      color: var(--text);
-      font-size: 18px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: border-color 0.2s, background 0.2s, transform 0.15s;
-      cursor: pointer;
-    }
-    .btn-secondary:hover {
-      border-color: rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.04);
-      transform: translateY(-1px);
-    }
-
-    .hero-proof {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 28px;
-      color: var(--muted);
-      font-size: 14px;
-      position: relative;
-      z-index: 1;
-      flex-wrap: wrap;
-    }
-    .hero-proof span { display: flex; align-items: center; gap: 6px; }
-    .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); }
-
-    /* ═══════════════════════════════════════════════════════
-       FEATURES SECTION
-       ═══════════════════════════════════════════════════════ */
-    .features-header {
-      text-align: center;
-      padding: 100px 32px 80px;
-      position: relative;
-    }
-    /* Subtle top arc like Cursorful */
-    .features-header::before {
-      content: '';
-      position: absolute;
-      top: -100px; left: 50%;
-      transform: translateX(-50%);
-      width: 160%;
-      height: 200px;
-      border-radius: 0 0 50% 50%;
-      background: radial-gradient(ellipse at center, rgba(59,130,246,0.04) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .features-label {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--blue);
-      margin-bottom: 16px;
-    }
-    .features-header h2 {
-      font-size: clamp(32px, 5.5vw, 56px);
-      font-weight: 900;
-      letter-spacing: -0.04em;
-      line-height: 1.1;
-      max-width: 700px;
-      margin: 0 auto;
-    }
-
-    /* ── Feature row (alternating) ────────────────────────── */
-    .feature-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: center;
-      max-width: var(--max-w);
-      margin: 0 auto;
-      padding: 60px 32px;
-    }
-    .feature-row.reverse .feature-text  { order: 1; }
-    .feature-row.reverse .feature-media { order: 0; }
-
-    .feature-text h3 {
-      font-size: clamp(28px, 3.5vw, 42px);
-      font-weight: 800;
-      letter-spacing: -0.035em;
-      line-height: 1.15;
-      margin-bottom: 20px;
-    }
-    .feature-text p {
-      font-size: 17px;
-      color: var(--text-2);
-      line-height: 1.7;
-      margin-bottom: 28px;
-      max-width: 480px;
-    }
-    .feature-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 28px;
-      border-radius: 12px;
-      border: 1.5px solid var(--border);
-      background: transparent;
-      color: var(--text);
-      font-size: 15px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
-    }
-    .feature-cta:hover {
-      border-color: rgba(59,130,246,0.5);
-      background: rgba(59,130,246,0.06);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(59,130,246,0.1);
-    }
-
-    /* Video/demo placeholder — styled like a browser window */
-    .feature-media {
-      position: relative;
-    }
-    .demo-frame {
-      position: relative;
-      border-radius: 16px;
-      overflow: hidden;
-      background: var(--bg-2);
-      border: 1px solid var(--border);
-      box-shadow:
-        0 20px 60px rgba(0,0,0,0.5),
-        0 0 0 1px rgba(255,255,255,0.03);
-      transition: box-shadow 0.3s, transform 0.3s;
-    }
-    .demo-frame:hover {
-      box-shadow:
-        0 25px 70px rgba(0,0,0,0.55),
-        0 0 40px rgba(59,130,246,0.08),
-        0 0 0 1px rgba(255,255,255,0.05);
-      transform: translateY(-4px);
-    }
-    /* Browser chrome bar */
-    .demo-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      background: rgba(255,255,255,0.03);
-      border-bottom: 1px solid var(--border);
-    }
-    .demo-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-    }
-    .demo-dot.r { background: #ff5f57; }
-    .demo-dot.y { background: #febc2e; }
-    .demo-dot.g { background: #28c840; }
-    .demo-url {
-      flex: 1;
-      margin-left: 8px;
-      padding: 5px 12px;
-      border-radius: 6px;
-      background: rgba(255,255,255,0.04);
-      font-size: 12px;
-      color: var(--muted);
-      font-family: 'Inter', monospace;
-    }
-
-    /* Placeholder for the actual video/gif */
-    .demo-content {
-      aspect-ratio: 16 / 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      background:
-        radial-gradient(ellipse at 30% 40%, rgba(59,130,246,0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 60%, rgba(167,139,250,0.05) 0%, transparent 50%),
-        var(--bg-2);
-      position: relative;
-    }
-    /* When video/gif is added, use this */
-    .demo-content img,
-    .demo-content video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .demo-content .placeholder-icon {
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .demo-content .placeholder-icon svg {
-      width: 24px; height: 24px;
-      color: var(--muted);
-    }
-    .demo-content .placeholder-label {
-      font-size: 13px;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    /* ═══════════════════════════════════════════════════════
-       FULL-WIDTH FEATURE (like "Available on all platforms")
-       ═══════════════════════════════════════════════════════ */
-    .feature-full {
-      text-align: center;
-      padding: 80px 32px;
-      max-width: var(--max-w);
-      margin: 0 auto;
-    }
-    .feature-full h3 {
-      font-size: clamp(28px, 3.5vw, 42px);
-      font-weight: 800;
-      letter-spacing: -0.035em;
-      margin-bottom: 16px;
-    }
-    .feature-full p {
-      font-size: 17px;
-      color: var(--text-2);
-      max-width: 520px;
-      margin: 0 auto 32px;
-    }
-    .platform-badges {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .platform-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      border-radius: 10px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text-2);
-      font-size: 14px;
-      font-weight: 500;
-    }
-    .platform-badge svg { width: 18px; height: 18px; color: var(--muted); }
-
-    /* ═══════════════════════════════════════════════════════
-       PRICING (like Cursorful)
-       ═══════════════════════════════════════════════════════ */
-    .pricing {
-      padding: 100px 32px 80px;
-      text-align: center;
-    }
-    .pricing .features-label { margin-bottom: 16px; }
-    .pricing h2 {
-      font-size: clamp(28px, 4vw, 44px);
-      font-weight: 900;
-      letter-spacing: -0.035em;
-      margin-bottom: 12px;
-    }
-    .pricing .pricing-sub {
-      color: var(--text-2);
-      font-size: 17px;
-      margin-bottom: 48px;
-    }
-    .pricing-card {
-      max-width: 520px;
-      margin: 0 auto;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      padding: 40px 36px;
-      text-align: left;
-    }
-    .pricing-card h3 {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
-    }
-    .pricing-card .price-tag {
-      font-size: 15px;
-      color: var(--green);
-      font-weight: 600;
-      margin-bottom: 28px;
-    }
-    .pricing-features {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      margin-bottom: 32px;
-    }
-    .pricing-features li {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 15px;
-      color: var(--text-2);
-    }
-    .pricing-features li svg {
-      width: 20px; height: 20px;
-      color: var(--green);
-      flex-shrink: 0;
-    }
-
-    /* ═══════════════════════════════════════════════════════
-       FAQ (like Cursorful)
-       ═══════════════════════════════════════════════════════ */
-    .faq {
-      padding: 80px 32px 100px;
-      max-width: 720px;
-      margin: 0 auto;
-    }
-    .faq .features-label { text-align: center; margin-bottom: 16px; }
-    .faq > h2 {
-      font-size: clamp(28px, 4vw, 44px);
-      font-weight: 900;
-      letter-spacing: -0.035em;
-      text-align: center;
-      margin-bottom: 48px;
-    }
-    .faq-item {
-      border-bottom: 1px solid var(--border);
-      padding: 20px 0;
-    }
-    .faq-q {
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      background: none;
-      border: none;
-      color: var(--text);
-      width: 100%;
-      text-align: left;
-      font-family: inherit;
-      line-height: 1.5;
-    }
-    .faq-q svg {
-      width: 20px; height: 20px;
-      flex-shrink: 0;
-      color: var(--muted);
-      transition: transform 0.25s;
-    }
-    .faq-item.open .faq-q svg { transform: rotate(45deg); }
-    .faq-a {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease, padding 0.3s ease;
-    }
-    .faq-item.open .faq-a {
-      max-height: 200px;
-      padding-top: 12px;
-    }
-    .faq-a p {
-      color: var(--text-2);
-      font-size: 15px;
-      line-height: 1.7;
-    }
-
-    /* ═══════════════════════════════════════════════════════
-       FOOTER (multi-column like Cursorful)
-       ═══════════════════════════════════════════════════════ */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 56px 32px 40px;
-    }
-    .footer-inner {
-      max-width: var(--max-w);
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 40px;
-    }
-    .footer-brand {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .footer-brand .nav-brand { margin-bottom: 4px; }
-    .footer-brand p {
-      color: var(--muted);
-      font-size: 13px;
-      max-width: 260px;
-    }
-    .footer-col h4 {
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 16px;
-    }
-    .footer-col ul {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .footer-col a {
-      color: var(--text-2);
-      text-decoration: none;
-      font-size: 14px;
-      transition: color 0.15s;
-    }
-    .footer-col a:hover { color: var(--text); }
-    .footer-copy {
-      max-width: var(--max-w);
-      margin: 32px auto 0;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    /* ═══════════════════════════════════════════════════════
-       SCROLL REVEAL ANIMATION
-       ═══════════════════════════════════════════════════════ */
-    .reveal {
-      opacity: 0;
-      transform: translateY(32px);
-      transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1),
-                  transform 0.7s cubic-bezier(0.16,1,0.3,1);
-    }
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    /* Stagger children */
-    .reveal-delay-1 { transition-delay: 0.1s; }
-    .reveal-delay-2 { transition-delay: 0.2s; }
-
-    /* ═══════════════════════════════════════════════════════
-       RESPONSIVE
-       ═══════════════════════════════════════════════════════ */
-    @media (max-width: 900px) {
-      .feature-row {
-        grid-template-columns: 1fr;
-        gap: 40px;
-        padding: 40px 24px;
-      }
-      .feature-row .feature-text  { order: 0 !important; }
-      .feature-row .feature-media { order: 1 !important; }
-      .footer-inner {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-    @media (max-width: 600px) {
-      .nav-links { display: none; }
-      .hero { padding: calc(var(--nav-h) + 48px) 20px 64px; }
-      .hero-buttons { flex-direction: column; }
-      .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
-      .feature-row { padding: 32px 20px; }
-      .footer-inner { grid-template-columns: 1fr; }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- ════════════ NAV ════════════ -->
-  <nav id="nav">
-    <div class="nav-inner">
-      <a href="#" class="nav-brand">
-        <img src="TabFlowV4.png" alt="tab.flow" />
-        <span>tab.flow</span>
-      </a>
-      <ul class="nav-links">
-        <li><a href="#features">Features</a></li>
-        <li><a href="#pricing">Pricing</a></li>
-        <li><a href="#faq">FAQ</a></li>
-      </ul>
-      <a href="https://chrome.google.com/webstore" class="nav-cta">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
-        Add to Chrome
-      </a>
-    </div>
-  </nav>
-
-  <!-- ════════════ HERO ════════════ -->
-  <section class="hero">
-    <img src="TabFlowV4.png" alt="tab.flow" class="hero-logo" />
-    <h1>
-      Tab management,<br/><span class="accent">reimagined</span>
-    </h1>
-    <p class="hero-sub">
-      A full-screen HUD overlay that replaces Chrome's tab switcher. Fuzzy search, AI assistant, smart grouping, and keyboard-first navigation — all in one shortcut.
-    </p>
-    <div class="hero-buttons">
-      <a href="https://chrome.google.com/webstore" class="btn-primary">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
-        Add to Chrome — It's Free
-      </a>
-      <a href="https://github.com/danielzhao07/TabFlow" class="btn-secondary">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.604-2.665-.3-5.467-1.332-5.467-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12 24 5.37 18.63 0 12 0z"/></svg>
-        View on GitHub
-      </a>
-    </div>
-    <div class="hero-proof">
-      <span>Free &amp; open source</span>
-      <div class="dot"></div>
-      <span>No sign-up required</span>
-      <div class="dot"></div>
-      <span>Works on Chrome, Edge &amp; Brave</span>
-    </div>
-  </section>
-
-  <!-- ════════════ FEATURES HEADER ════════════ -->
-  <section id="features">
-    <div class="features-header reveal">
-      <p class="features-label">Features</p>
-      <h2>Your tabs, finally under control</h2>
-    </div>
-
-    <!-- ── Feature 1: HUD Overlay ── -->
-    <div class="feature-row">
-      <div class="feature-media reveal">
-        <div class="demo-frame">
-          <div class="demo-bar">
-            <div class="demo-dot r"></div>
-            <div class="demo-dot y"></div>
-            <div class="demo-dot g"></div>
-            <div class="demo-url">youtube.com</div>
-          </div>
-          <div class="demo-content">
-            <!-- Replace with: <img src="demos/hud-grid.gif" alt="HUD overlay demo" /> -->
-            <div class="placeholder-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </div>
-            <span class="placeholder-label">Demo: Full-screen tab grid</span>
-          </div>
-        </div>
-      </div>
-      <div class="feature-text reveal reveal-delay-1">
-        <h3>See every tab at a glance</h3>
-        <p>Press <strong>Alt+Q</strong> and a full-screen overlay shows all your open tabs in a beautiful grid — like Windows Alt+Tab, but for your browser. Thumbnails, favicons, and group colors at a glance.</p>
-        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
-      </div>
-    </div>
-
-    <!-- ── Feature 2: Fuzzy Search ── -->
-    <div class="feature-row reverse">
-      <div class="feature-text reveal">
-        <h3>Find any tab in milliseconds</h3>
-        <p>Start typing and fuzzy search instantly filters your tabs by title or URL. Use powerful structured filters like <strong>is:pinned</strong>, <strong>domain:github.com</strong>, or <strong>group:work</strong> to drill down fast.</p>
-        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
-      </div>
-      <div class="feature-media reveal reveal-delay-1">
-        <div class="demo-frame">
-          <div class="demo-bar">
-            <div class="demo-dot r"></div>
-            <div class="demo-dot y"></div>
-            <div class="demo-dot g"></div>
-            <div class="demo-url">tab.flow — Search</div>
-          </div>
-          <div class="demo-content">
-            <!-- Replace with: <img src="demos/fuzzy-search.gif" alt="Fuzzy search demo" /> -->
-            <div class="placeholder-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </div>
-            <span class="placeholder-label">Demo: Fuzzy search &amp; filters</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Feature 3: AI Assistant ── -->
-    <div class="feature-row">
-      <div class="feature-media reveal">
-        <div class="demo-frame">
-          <div class="demo-bar">
-            <div class="demo-dot r"></div>
-            <div class="demo-dot y"></div>
-            <div class="demo-dot g"></div>
-            <div class="demo-url">tab.flow — AI</div>
-          </div>
-          <div class="demo-content">
-            <!-- Replace with: <img src="demos/ai-assistant.gif" alt="AI assistant demo" /> -->
-            <div class="placeholder-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </div>
-            <span class="placeholder-label">Demo: AI assistant browsing</span>
-          </div>
-        </div>
-      </div>
-      <div class="feature-text reveal reveal-delay-1">
-        <h3>An AI that browses for you</h3>
-        <p>Type naturally — <em>"open my GitHub repos"</em>, <em>"play lo-fi music on YouTube"</em>, or <em>"find restaurants near me"</em> — and the AI navigates directly to the right page. No more manual searching.</p>
-        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
-      </div>
-    </div>
-
-    <!-- ── Feature 4: Keyboard Navigation ── -->
-    <div class="feature-row reverse">
-      <div class="feature-text reveal">
-        <h3>Keyboard-first, mouse-optional</h3>
-        <p>Full 2D arrow-key navigation through the grid. Multi-select with Shift, close with Ctrl+X, pin with Ctrl+P, and 20+ more shortcuts. A built-in cheat sheet (<strong>?</strong> key) so you never forget.</p>
-        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
-      </div>
-      <div class="feature-media reveal reveal-delay-1">
-        <div class="demo-frame">
-          <div class="demo-bar">
-            <div class="demo-dot r"></div>
-            <div class="demo-dot y"></div>
-            <div class="demo-dot g"></div>
-            <div class="demo-url">tab.flow — Keyboard Nav</div>
-          </div>
-          <div class="demo-content">
-            <!-- Replace with: <img src="demos/keyboard-nav.gif" alt="Keyboard navigation demo" /> -->
-            <div class="placeholder-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </div>
-            <span class="placeholder-label">Demo: Keyboard navigation</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Feature 5: Tab Groups ── -->
-    <div class="feature-row">
-      <div class="feature-media reveal">
-        <div class="demo-frame">
-          <div class="demo-bar">
-            <div class="demo-dot r"></div>
-            <div class="demo-dot y"></div>
-            <div class="demo-dot g"></div>
-            <div class="demo-url">tab.flow — Groups</div>
-          </div>
-          <div class="demo-content">
-            <!-- Replace with: <img src="demos/tab-groups.gif" alt="Tab groups demo" /> -->
-            <div class="placeholder-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </div>
-            <span class="placeholder-label">Demo: Smart tab groups</span>
-          </div>
-        </div>
-      </div>
-      <div class="feature-text reveal reveal-delay-1">
-        <h3>Groups that actually make sense</h3>
-        <p>Color-coded tab groups with a visible stripe on every card. Filter by group instantly, get smart group suggestions, and create new groups from multi-selected tabs in one shortcut.</p>
-        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
-      </div>
-    </div>
-
-    <!-- ── Feature 6: Snooze, Notes & Tools ── -->
-    <div class="feature-row reverse">
-      <div class="feature-text reveal">
-        <h3>Snooze tabs, take notes, and more</h3>
-        <p>Snooze a tab to reappear later — in 30 minutes, tomorrow, or next week. Attach notes to any tab. Bookmark with one key. Undo any close instantly. Right-click for a full context menu of power tools.</p>
-        <a href="https://chrome.google.com/webstore" class="feature-cta">Try it now</a>
-      </div>
-      <div class="feature-media reveal reveal-delay-1">
-        <div class="demo-frame">
-          <div class="demo-bar">
-            <div class="demo-dot r"></div>
-            <div class="demo-dot y"></div>
-            <div class="demo-dot g"></div>
-            <div class="demo-url">tab.flow — Tools</div>
-          </div>
-          <div class="demo-content">
-            <!-- Replace with: <img src="demos/snooze-notes.gif" alt="Snooze and notes demo" /> -->
-            <div class="placeholder-icon">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            </div>
-            <span class="placeholder-label">Demo: Snooze, notes &amp; context menu</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Feature 7: Full-width (like "Available on all platforms") ── -->
-    <div class="feature-full reveal">
-      <h3>Works everywhere you browse</h3>
-      <p>tab.flow runs on any Chromium browser. Your preferences, notes, and data stay local — nothing leaves your machine unless you choose to sync.</p>
-      <div class="platform-badges">
-        <div class="platform-badge">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
-          Google Chrome
-        </div>
-        <div class="platform-badge">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.86 17.86q.14 0 .25.12.1.13.1.25t-.11.33l-.32.46-.43.53-.44.5q-.21.25-.38.42l-.22.23q-.58.53-1.34 1.04-.76.51-1.6.91-.86.4-1.74.64-.88.25-1.63.25-1.42 0-2.67-.53-1.25-.53-2.19-1.47-.93-.93-1.47-2.18-.53-1.25-.53-2.67 0-1.22.39-2.35.4-1.13 1.1-2.1.71-.96 1.7-1.72 1-.76 2.17-1.27l.45 1q-1.97 1.03-3.2 2.8-1.22 1.77-1.22 3.64 0 1.12.42 2.1.43.97 1.17 1.71.73.73 1.7 1.16.98.42 2.1.42.91 0 1.79-.27.87-.26 1.6-.66.73-.4 1.3-.85.56-.46.87-.82H16v-3h5.86zM3.66 8.56l-.87-.5q.95-1.63 2.43-2.77Q6.7 4.16 8.56 3.56l.33.95q-1.63.55-2.97 1.6-1.33 1.06-2.26 2.45zM6.3 20.84l-.55.83q-1.13-.73-2-1.73-.88-1-1.44-2.17Q1.76 16.6 1.5 15.33 1.24 14.06 1.24 12.72q0-1.15.28-2.38.28-1.24.81-2.38L3.13 8.5q-.46 1.02-.72 2.1-.26 1.07-.26 2.12 0 1.18.23 2.3.24 1.13.7 2.15.47 1.02 1.15 1.87.68.85 1.57 1.47l.5.33zM12.28 3.18L12.14 2.2q1.17-.12 2.28.04 1.1.16 2.14.59 1.03.43 1.9 1.1.88.68 1.56 1.56l-.83.56q-.6-.8-1.36-1.34-.77-.54-1.65-.88-.88-.33-1.83-.5-.96-.16-2.07-.15z"/></svg>
-          Microsoft Edge
-        </div>
-        <div class="platform-badge">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8zm-1.5-9.5L12 6l1.5 4.5L18 12l-4.5 1.5L12 18l-1.5-4.5L6 12l4.5-1.5z"/></svg>
-          Brave
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ════════════ PRICING ════════════ -->
-  <section class="pricing" id="pricing">
-    <p class="features-label">Pricing</p>
-    <h2>Free, forever</h2>
-    <p class="pricing-sub">No tiers, no upsells. Every feature included.</p>
-
-    <div class="pricing-card reveal">
-      <h3>tab.flow</h3>
-      <p class="price-tag">100% free &amp; open source</p>
-      <ul class="pricing-features">
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Full-screen HUD with tab grid</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Fuzzy search &amp; structured filters</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> AI-powered assistant</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Keyboard-first navigation</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Tab groups with colors</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Snooze, notes &amp; bookmarks</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Tab suspender (save memory)</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Command palette</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Drag-to-reorder</li>
-        <li><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Works on Chrome, Edge &amp; Brave</li>
-      </ul>
-      <a href="https://chrome.google.com/webstore" class="btn-primary" style="width:100%;justify-content:center;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
-        Install now — Free
-      </a>
-    </div>
-  </section>
-
-  <!-- ════════════ FAQ ════════════ -->
-  <section class="faq" id="faq">
-    <p class="features-label">FAQ</p>
-    <h2>Common questions</h2>
-
-    <div class="faq-item">
-      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
-        Is tab.flow really free?
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <div class="faq-a"><p>Yes, 100%. tab.flow is free and open source under the MIT license. Every feature is included — no premium tier, no paywalls, no trials. You can view the full source code on GitHub.</p></div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
-        Does it work on Firefox or Safari?
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <div class="faq-a"><p>tab.flow currently supports Chromium-based browsers — Google Chrome, Microsoft Edge, and Brave. Firefox and Safari support may come in the future.</p></div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
-        Does tab.flow collect my data?
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <div class="faq-a"><p>No. Your tabs, notes, bookmarks, and browsing data stay entirely local on your machine. Nothing is sent to any server unless you explicitly enable optional cloud sync.</p></div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
-        What's the keyboard shortcut?
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <div class="faq-a"><p>Press <strong>Alt+Q</strong> to toggle the HUD overlay. Double-press <strong>Alt+Q+Q</strong> to quick-switch to your last tab. Press <strong>?</strong> inside the HUD to see all 20+ shortcuts.</p></div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
-        How does the AI assistant work?
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-      <div class="faq-a"><p>The AI assistant uses a language model to understand your natural language requests and translates them into browser actions — opening URLs, searching specific sites, or navigating to pages. It runs through a secure API and never stores your queries.</p></div>
-    </div>
-  </section>
-
-  <!-- ════════════ FOOTER ════════════ -->
-  <footer>
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <a href="#" class="nav-brand">
-          <img src="TabFlowV4.png" alt="tab.flow" />
-          <span>tab.flow</span>
-        </a>
-        <p>Intelligent tab management for Chrome. Free, open source, and built for power users.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Product</h4>
-        <ul>
-          <li><a href="#features">Features</a></li>
-          <li><a href="#pricing">Pricing</a></li>
-          <li><a href="#faq">FAQ</a></li>
-          <li><a href="https://chrome.google.com/webstore">Install</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Resources</h4>
-        <ul>
-          <li><a href="https://github.com/danielzhao07/TabFlow">GitHub</a></li>
-          <li><a href="https://github.com/danielzhao07/TabFlow/issues">Report a Bug</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Legal</h4>
-        <ul>
-          <li><a href="privacy.html">Privacy Policy</a></li>
-          <li><a href="terms.html">Terms of Service</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="footer-copy">
-      &copy; 2026 tab.flow. All rights reserved.
-    </div>
-  </footer>
-
-  <!-- ════════════ SCRIPTS ════════════ -->
-  <script>
-    // Sticky nav background on scroll
-    const nav = document.getElementById('nav');
-    window.addEventListener('scroll', () => {
-      nav.classList.toggle('scrolled', window.scrollY > 40);
-    }, { passive: true });
-
-    // Scroll-reveal: elements with .reveal become .visible when in viewport
-    const reveals = document.querySelectorAll('.reveal');
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.add('visible');
-          observer.unobserve(e.target);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tab.flow - Smart Tab Manager for Chrome</title>
+    <meta name="description"
+        content="Replace Chrome's cluttered tab bar with a beautiful full-screen grid. Search, organize, and switch tabs instantly with fuzzy search, AI, and keyboard shortcuts.">
+    <link rel="icon" type="image/png" href="TabFlowV4.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
         }
-      });
-    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-    reveals.forEach(el => observer.observe(el));
-  </script>
+
+        :root {
+            --bg: #08080e;
+            --bg-subtle: #0e0e18;
+            --bg-card: rgba(255, 255, 255, 0.035);
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-glow: rgba(59, 130, 246, 0.15);
+            --accent: #38bdf8;
+            --text: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #475569;
+            --border: rgba(255, 255, 255, 0.07);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        html {
+            font-size: 17px;
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased
+        }
+
+        section[id] {
+            scroll-margin-top: 80px
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            color: var(--text-secondary);
+            background: var(--bg);
+            line-height: 1.6;
+            letter-spacing: -0.01em;
+            overflow-x: hidden
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none
+        }
+
+        img,
+        video {
+            max-width: 100%;
+            display: block
+        }
+
+        code {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: .86em;
+            background: rgba(59, 130, 246, 0.12);
+            color: var(--primary);
+            padding: 2px 7px;
+            border-radius: 5px
+        }
+
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 18px 36px;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all .2s ease;
+            text-decoration: none
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(59, 130, 246, .3), 0 4px 12px rgba(59, 130, 246, .15)
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, .4), 0 8px 24px rgba(59, 130, 246, .25);
+            transform: translateY(-1px)
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1.5px solid var(--border)
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(59, 130, 246, .06)
+        }
+
+        .btn-sm {
+            padding: 10px 20px;
+            font-size: .85rem
+        }
+
+        .chrome-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0
+        }
+
+        /* Nav */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: 0 32px;
+            max-width: max-content;
+            margin: 0 auto;
+            border-radius: 0 0 24px 24px;
+            background: transparent;
+            backdrop-filter: blur(0);
+            -webkit-backdrop-filter: blur(0);
+            transition: all .5s cubic-bezier(.4, 0, .2, 1)
+        }
+
+        .nav.scrolled {
+            background: rgba(14, 14, 24, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, .3), 0 0 0 1px var(--border)
+        }
+
+        .nav-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 32px;
+            height: 64px
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
+            font-size: 1.18rem;
+            color: var(--text);
+            letter-spacing: -.02em
+        }
+
+        .nav-logo img {
+            width: 42px;
+            height: 42px
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px
+        }
+
+        .nav-links a {
+            font-size: .88rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: color .15s
+        }
+
+        .nav-links a:hover {
+            color: var(--text)
+        }
+
+        .nav-cta {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .nav-cta .btn-sm {
+            padding: 8px 18px
+        }
+
+        /* Hero */
+        .hero {
+            padding: 100px 0 40px;
+            text-align: center
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 18px;
+            background: rgba(59, 130, 246, .1);
+            color: var(--primary);
+            border-radius: 9999px;
+            font-size: .8rem;
+            font-weight: 650;
+            margin-bottom: 24px;
+            border: 1px solid rgba(59, 130, 246, .15)
+        }
+
+        .hero h1 {
+            font-size: 3.8rem;
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -.035em;
+            color: var(--text);
+            margin-bottom: 28px;
+            text-wrap: balance
+        }
+
+        .hero h1 .gradient {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, var(--primary) 100%);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 4s ease-in-out infinite
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 100% 50%
+            }
+
+            50% {
+                background-position: 0% 50%
+            }
+
+            100% {
+                background-position: 100% 50%
+            }
+        }
+
+        .hero-sub {
+            font-size: 1.12rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin: 0 auto 10px
+        }
+
+        .hero-ctas {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 36px;
+            margin-bottom: 24px;
+            flex-wrap: wrap
+        }
+
+        .hero-note {
+            font-size: .82rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px
+        }
+
+        .hero-note span {
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .hero-note .sep {
+            opacity: .4
+        }
+
+        /* Hero Visual */
+        .hero-visual {
+            max-width: 90vw;
+            margin: 40px auto 0;
+            padding: 0
+        }
+
+        .hero-window {
+            background: #0f1520;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 25px 60px -12px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .06)
+        }
+
+        .hero-window .demo-bar {
+            background: #161e2e;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .hero-window .demo-content {
+            position: relative;
+            aspect-ratio: 16/9.5;
+            background: linear-gradient(145deg, #0c1322, #141d30);
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .hero-window .demo-content img,
+        .hero-window .demo-content video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover
+        }
+
+        /* Demo Windows */
+        .demo-window {
+            background: #0f1520;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, .4), 0 0 0 1px rgba(255, 255, 255, .05);
+            transition: transform .3s, box-shadow .3s
+        }
+
+        .demo-window:hover {
+            transform: translateY(-4px) scale(1.08);
+            box-shadow: 0 28px 60px -12px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .08)
+        }
+
+        .demo-bar {
+            background: #161e2e;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 7px
+        }
+
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%
+        }
+
+        .dot:nth-child(1) {
+            background: #ef4444
+        }
+
+        .dot:nth-child(2) {
+            background: #eab308
+        }
+
+        .dot:nth-child(3) {
+            background: #22c55e
+        }
+
+        .demo-content {
+            position: relative;
+            aspect-ratio: 4/3;
+            background: linear-gradient(145deg, #0c1322, #141d30);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden
+        }
+
+        .demo-content img,
+        .demo-content video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover
+        }
+
+        .demo-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            color: rgba(255, 255, 255, .3)
+        }
+
+        .demo-placeholder .play-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .06);
+            border: 2px solid rgba(255, 255, 255, .12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .25s
+        }
+
+        .demo-window:hover .play-circle {
+            background: rgba(59, 130, 246, .2);
+            border-color: rgba(59, 130, 246, .4)
+        }
+
+        .play-circle svg {
+            width: 20px;
+            height: 20px;
+            fill: rgba(255, 255, 255, .5);
+            margin-left: 3px
+        }
+
+        .demo-placeholder span {
+            font-size: .82rem;
+            font-weight: 500
+        }
+
+        .features {
+            padding: 40px 0 0;
+            position: relative;
+            scroll-margin-top: 80px
+        }
+
+        .features::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0
+        }
+
+        .features::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 15%;
+            right: 15%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.3
+        }
+
+        .features-heading {
+            text-align: center;
+            margin-bottom: 72px
+        }
+
+        .features-heading .section-label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 10px
+        }
+
+        .features-heading h2 {
+            font-size: 2.8rem;
+            font-weight: 780;
+            color: var(--text);
+            letter-spacing: -.03em;
+            margin-bottom: 12px
+        }
+
+        .pop-word {
+            display: inline-block;
+            position: relative;
+            transition: transform .1s;
+            color: var(--primary)
+        }
+
+        .pop-cursor {
+            position: absolute;
+            bottom: -8px;
+            right: -18px;
+            width: 36px;
+            height: 36px;
+            opacity: 0;
+            pointer-events: none;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4));
+            z-index: 10
+        }
+
+        .features-heading.visible .pop-cursor {
+            animation: cursor-enter 1.2s ease-out .4s forwards, cursor-click .3s ease 1.3s, cursor-fade .5s ease 2.2s forwards
+        }
+
+        .features-heading.visible .pop-word {
+            animation: pop-click 2s cubic-bezier(.175, .885, .32, 1.275) 1.4s both
+        }
+
+        @keyframes cursor-enter {
+            0% {
+                opacity: 0;
+                transform: translate(40px, 30px)
+            }
+
+            100% {
+                opacity: 1;
+                transform: translate(0, 0)
+            }
+        }
+
+        @keyframes cursor-click {
+            0% {
+                transform: scale(1)
+            }
+
+            50% {
+                transform: scale(0.8)
+            }
+
+            100% {
+                transform: scale(1)
+            }
+        }
+
+        @keyframes cursor-fade {
+            0% {
+                opacity: 1
+            }
+
+            100% {
+                opacity: 0
+            }
+        }
+
+        @keyframes pop-click {
+            0% {
+                transform: scale(1);
+                text-shadow: none
+            }
+
+            10% {
+                transform: scale(0.6) rotate(-3deg)
+            }
+
+            30% {
+                transform: scale(1.25) rotate(2deg);
+                text-shadow: 0 0 24px rgba(59, 130, 246, .5)
+            }
+
+            50% {
+                transform: scale(0.92) rotate(-1deg)
+            }
+
+            70% {
+                transform: scale(1.08);
+                text-shadow: 0 0 12px rgba(59, 130, 246, .25)
+            }
+
+            85% {
+                transform: scale(0.98)
+            }
+
+            100% {
+                transform: scale(1) rotate(0);
+                text-shadow: none
+            }
+        }
+
+        .features-heading p {
+            font-size: 1.06rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto
+        }
+
+        /* Feature Blocks */
+        .feature-block {
+            padding: 56px 0;
+            position: relative;
+            overflow: visible
+        }
+
+        .feature-block>.container {
+            padding: 0;
+            max-width: none
+        }
+
+        .feature-block:nth-child(odd) {
+            background: rgba(59, 130, 246, .02)
+        }
+
+        .feature-block:nth-child(even) {
+            background: rgba(139, 92, 246, .02)
+        }
+
+        .feature-block:nth-child(1) .feature-text::after {
+            content: '⊞'
+        }
+
+        .feature-block:nth-child(2) .feature-text::after {
+            content: '⌕'
+        }
+
+        .feature-block:nth-child(3) .feature-text::after {
+            content: '✦'
+        }
+
+        .feature-block:nth-child(4) .feature-text::after {
+            content: '◧'
+        }
+
+        .feature-block:nth-child(5) .feature-text::after {
+            content: '⛋'
+        }
+
+        .feature-block:nth-child(6) .feature-text::after {
+            content: '⌘'
+        }
+
+        .feature-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            width: 100vw;
+            position: relative;
+            left: 50%;
+            margin-left: -50vw
+        }
+
+        .feature-row.reverse {
+            flex-direction: row-reverse
+        }
+
+        .feature-visual {
+            flex: 0 0 55%;
+            min-width: 0
+        }
+
+        .feature-row.reverse .feature-visual {
+            flex: 0 0 55%
+        }
+
+        .feature-text {
+            flex: 1;
+            min-width: 0;
+            position: relative;
+            padding: 40px 64px
+        }
+
+        .feature-text::after {
+            position: absolute;
+            font-size: 160px;
+            opacity: .02;
+            pointer-events: none;
+            line-height: 1;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 0
+        }
+
+        .feature-label {
+            display: inline-block;
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+            color: var(--primary)
+        }
+
+        .flow-brand {
+            font-weight: 700;
+            font-style: italic;
+            padding-right: 3px;
+            margin-right: -3px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 50%, var(--primary) 100%);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 4s ease-in-out infinite
+        }
+
+        .feature-text h2 {
+            font-size: 2rem;
+            font-weight: 750;
+            color: var(--text);
+            letter-spacing: -.025em;
+            line-height: 1.2;
+            margin-bottom: 14px
+        }
+
+        .feature-text p {
+            font-size: .96rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 20px
+        }
+
+        /* More Features Grid */
+        .more-features {
+            padding: 80px 0
+        }
+
+        .more-features-heading {
+            text-align: center;
+            margin-bottom: 48px
+        }
+
+        .more-features-heading h2 {
+            font-size: 2rem;
+            font-weight: 750;
+            color: var(--text);
+            letter-spacing: -.03em;
+            margin-bottom: 10px
+        }
+
+        .more-features-heading p {
+            font-size: 1rem;
+            color: var(--text-secondary)
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            transition: all .25s
+        }
+
+        .feature-card:hover {
+            border-color: rgba(59, 130, 246, .2);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, .06);
+            transform: translateY(-2px)
+        }
+
+        .feature-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(59, 130, 246, .1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 18px
+        }
+
+        .feature-card-icon svg {
+            width: 22px;
+            height: 22px;
+            color: var(--primary)
+        }
+
+        .feature-card h3 {
+            font-size: 1.02rem;
+            font-weight: 680;
+            color: var(--text);
+            margin-bottom: 8px
+        }
+
+        .feature-card p {
+            font-size: .88rem;
+            line-height: 1.6;
+            color: var(--text-secondary)
+        }
+
+        /* Pricing */
+        .pricing {
+            padding: 96px 0
+        }
+
+        .pricing-heading {
+            text-align: center;
+            margin-bottom: 52px
+        }
+
+        .pricing-heading h2 {
+            font-size: 2.4rem;
+            font-weight: 780;
+            color: var(--text);
+            letter-spacing: -.03em;
+            margin-bottom: 12px
+        }
+
+        .pricing-heading p {
+            font-size: 1.06rem;
+            color: var(--text-secondary);
+            max-width: 440px;
+            margin: 0 auto
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px;
+            position: relative;
+            transition: all .25s
+        }
+
+        .pricing-card:hover {
+            box-shadow: 0 12px 32px rgba(0, 0, 0, .2)
+        }
+
+        .pricing-card.featured {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px var(--primary), 0 12px 32px rgba(59, 130, 246, .1)
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -11px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 16px;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 9999px;
+            font-size: .72rem;
+            font-weight: 700
+        }
+
+        .pricing-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px
+        }
+
+        .pricing-price {
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -.04em;
+            margin-bottom: 4px
+        }
+
+        .pricing-price .period {
+            font-size: .9rem;
+            font-weight: 500;
+            color: var(--text-muted)
+        }
+
+        .pricing-desc {
+            font-size: .88rem;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            line-height: 1.5
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px
+        }
+
+        .pricing-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: .9rem;
+            color: var(--text-secondary);
+            line-height: 1.45
+        }
+
+        .pricing-features li svg {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            color: var(--primary);
+            margin-top: 2px
+        }
+
+        .pricing-card .btn {
+            width: 100%
+        }
+
+        /* FAQ */
+        .faq {
+            padding: 96px 0
+        }
+
+        .faq-heading {
+            text-align: center;
+            margin-bottom: 52px
+        }
+
+        .faq-heading h2 {
+            font-size: 2.4rem;
+            font-weight: 780;
+            color: var(--text);
+            letter-spacing: -.03em;
+            margin-bottom: 12px
+        }
+
+        .faq-heading p {
+            font-size: 1rem;
+            color: var(--text-secondary)
+        }
+
+        .faq-heading p a {
+            color: var(--primary);
+            font-weight: 600
+        }
+
+        .faq-list {
+            max-width: 680px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--border)
+        }
+
+        .faq-question {
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 22px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 620;
+            color: var(--text);
+            text-align: left;
+            transition: color .15s
+        }
+
+        .faq-question:hover {
+            color: var(--primary)
+        }
+
+        .faq-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            position: relative;
+            transition: transform .3s
+        }
+
+        .faq-icon::before,
+        .faq-icon::after {
+            content: '';
+            position: absolute;
+            background: var(--text-muted);
+            border-radius: 2px;
+            transition: transform .3s, opacity .3s
+        }
+
+        .faq-icon::before {
+            width: 14px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%)
+        }
+
+        .faq-icon::after {
+            width: 2px;
+            height: 14px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%)
+        }
+
+        .faq-item.active .faq-icon::after {
+            transform: translate(-50%, -50%) rotate(90deg);
+            opacity: 0
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .35s, padding .35s
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 300px
+        }
+
+        .faq-answer p {
+            padding-bottom: 22px;
+            font-size: .92rem;
+            color: var(--text-secondary);
+            line-height: 1.7
+        }
+
+        /* Footer */
+        footer {
+            padding: 64px 0 40px;
+            border-top: 1px solid var(--border)
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            gap: 48px;
+            margin-bottom: 48px
+        }
+
+        .footer-brand {
+            max-width: 260px
+        }
+
+        .footer-brand .nav-logo {
+            margin-bottom: 14px
+        }
+
+        .footer-brand p {
+            font-size: .85rem;
+            color: var(--text-muted);
+            line-height: 1.6
+        }
+
+        .footer-col h4 {
+            font-size: .82rem;
+            font-weight: 700;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 16px
+        }
+
+        .footer-col a {
+            display: block;
+            font-size: .88rem;
+            color: var(--text-muted);
+            padding: 5px 0;
+            transition: color .15s
+        }
+
+        .footer-col a:hover {
+            color: var(--primary)
+        }
+
+        .footer-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 24px;
+            border-top: 1px solid var(--border)
+        }
+
+        .footer-bottom p {
+            font-size: .8rem;
+            color: var(--text-muted)
+        }
+
+        /* Background Orbs */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(150px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: .08
+        }
+
+        .bg-orb-1 {
+            width: 700px;
+            height: 700px;
+            background: var(--primary);
+            top: -300px;
+            right: -200px;
+            animation: float1 25s ease-in-out infinite
+        }
+
+        .bg-orb-2 {
+            width: 500px;
+            height: 500px;
+            background: var(--accent);
+            bottom: -200px;
+            left: -150px;
+            animation: float2 30s ease-in-out infinite
+        }
+
+        .bg-orb-3 {
+            width: 400px;
+            height: 400px;
+            background: #06b6d4;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: float3 20s ease-in-out infinite
+        }
+
+        @keyframes float1 {
+
+            0%,
+            100% {
+                transform: translate(0, 0)
+            }
+
+            50% {
+                transform: translate(-60px, 80px)
+            }
+        }
+
+        @keyframes float2 {
+
+            0%,
+            100% {
+                transform: translate(0, 0)
+            }
+
+            50% {
+                transform: translate(80px, -60px)
+            }
+        }
+
+        @keyframes float3 {
+
+            0%,
+            100% {
+                transform: translate(-50%, -50%)
+            }
+
+            50% {
+                transform: translate(-40%, -40%)
+            }
+        }
+
+        /* Animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity .7s ease, transform .7s ease
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        .fade-in-delay-1 {
+            transition-delay: .1s
+        }
+
+        .fade-in-delay-2 {
+            transition-delay: .2s
+        }
+
+        .fade-in-delay-3 {
+            transition-delay: .3s
+        }
+
+        /* Responsive */
+        @media(max-width:1024px) {
+            .hero h1 {
+                font-size: 3rem
+            }
+
+            .feature-row {
+                gap: 40px
+            }
+        }
+
+        @media(max-width:768px) {
+            html {
+                font-size: 16px
+            }
+
+            .nav-links {
+                display: none
+            }
+
+            .hero {
+                padding: 100px 0 40px
+            }
+
+            .hero h1 {
+                font-size: 2.4rem
+            }
+
+            .feature-row,
+            .feature-row.reverse {
+                flex-direction: column;
+                gap: 32px
+            }
+
+            .feature-visual {
+                order: -1
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr
+            }
+
+            .footer-inner {
+                flex-direction: column;
+                gap: 36px
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center
+            }
+        }
+
+        @media(max-width:480px) {
+            .hero h1 {
+                font-size: 2rem
+            }
+
+            .hero-ctas {
+                flex-direction: column;
+                width: 100%
+            }
+
+            .hero-ctas .btn {
+                width: 100%
+            }
+        }
+
+        /* Command list dropdown */
+        .cmd-list-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 18px;
+            padding: 10px 18px;
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: var(--radius-sm);
+            color: var(--primary);
+            font-size: .88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .25s ease;
+            font-family: inherit;
+        }
+        .cmd-list-toggle:hover {
+            background: rgba(59, 130, 246, 0.14);
+            border-color: rgba(59, 130, 246, 0.35);
+        }
+        .cmd-list-toggle .chevron {
+            transition: transform .3s ease;
+            width: 16px; height: 16px;
+        }
+        .cmd-list-toggle.open .chevron {
+            transform: rotate(180deg);
+        }
+        .cmd-list-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .4s cubic-bezier(.4,0,.2,1), opacity .3s ease;
+            opacity: 0;
+            margin-top: 0;
+        }
+        .cmd-list-panel.open {
+            max-height: 600px;
+            opacity: 1;
+            margin-top: 14px;
+        }
+        .cmd-list {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .cmd-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: background .15s ease;
+        }
+        .cmd-item:last-child { border-bottom: none; }
+        .cmd-item:hover { background: rgba(59, 130, 246, 0.06); }
+        .cmd-item-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cmd-item-label {
+            font-size: .82rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+        .cmd-item-kbd {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: .72rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 3px 8px;
+            border-radius: 5px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Background Orbs -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+
+    <!-- Nav -->
+    <nav class="nav" id="nav">
+        <div class="nav-inner">
+            <a href="#" class="nav-logo">
+                <img src="TabFlowV4.png" alt="tab.flow">
+                tab.flow
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#faq">FAQ</a>
+            </div>
+            <div class="nav-cta">
+                <a href="https://chrome.google.com/webstore" class="btn btn-primary btn-sm">
+                    <svg class="chrome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="9.5" />
+                        <circle cx="12" cy="12" r="3.5" />
+                        <line x1="12" y1="2.5" x2="12" y2="8.5" />
+                        <line x1="3.8" y1="16.7" x2="9" y2="14" />
+                        <line x1="20.2" y1="16.7" x2="15" y2="14" />
+                    </svg>
+                    Add to Chrome
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <h1 class="fade-in fade-in-delay-1">
+                Your browser<br><span class="gradient">beautifully organized</span>
+            </h1>
+            <p class="hero-sub fade-in fade-in-delay-2">
+                tab.flow gives you a stunning full-screen grid to search, organize, and switch tabs instantly.
+            </p>
+            <span class="feature-label fade-in fade-in-delay-2" style="margin-top:4px;font-size:.92rem">Powered by <span
+                    class="flow-brand">flow</span>, your AI assistant</span>
+            <div class="hero-ctas fade-in fade-in-delay-3">
+                <a href="https://chrome.google.com/webstore" class="btn btn-primary">
+                    <svg class="chrome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="9.5" />
+                        <circle cx="12" cy="12" r="3.5" />
+                        <line x1="12" y1="2.5" x2="12" y2="8.5" />
+                        <line x1="3.8" y1="16.7" x2="9" y2="14" />
+                        <line x1="20.2" y1="16.7" x2="15" y2="14" />
+                    </svg>
+                    Install Now
+                </a>
+                <a href="#features" class="btn btn-secondary">See Features</a>
+            </div>
+            <p class="hero-note fade-in fade-in-delay-3">
+                <span>Free forever</span><span class="sep">·</span>
+                <span>No sign-up required</span><span class="sep">·</span>
+                <span>Works on all Chromium browsers</span>
+            </p>
+        </div>
+        <div class="hero-visual" style="padding:0">
+            <div class="hero-window">
+                <div class="demo-content">
+                    <video autoplay loop muted playsinline>
+                        <source src="demo-videos/Hero V4-1772607958625.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="features-heading fade-in">
+                <span class="section-label">Features</span>
+                <h2>Built for the way you <span class="pop-word">browse<svg class="pop-cursor" viewBox="0 0 24 24"
+                            fill="none">
+                            <path d="M5 2l10 10H9.5L13 18l-2.5 1L7 13l-4.5 4.5z" fill="white" stroke="#222"
+                                stroke-width="1" />
+                        </svg></span></h2>
+                <p>Powerful features designed for people who live in their browser.</p>
+            </div>
+        </div>
+
+        <!-- Feature 1: Grid HUD -->
+        <div class="feature-block">
+            <div class="container">
+                <div class="feature-row fade-in">
+                    <div class="feature-visual">
+                        <div class="demo-window">
+                            <div class="demo-content">
+                                <video autoplay loop muted playsinline>
+                                    <source src="demo-videos/Video 1-1772606155839.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-text">
+                        <span class="feature-label">The Big Picture</span>
+                        <h2>All your tabs in one beautiful grid</h2>
+                        <p>See every open tab at a glance. One shortcut opens a stunning full-screen view of your entire
+                            browser, beautifully laid out and ready to explore.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature 2: Fuzzy Search -->
+        <div class="feature-block">
+            <div class="container">
+                <div class="feature-row reverse fade-in">
+                    <div class="feature-visual">
+                        <div class="demo-window">
+                            <div class="demo-content">
+                                <video autoplay loop muted playsinline style="object-position: left center">
+                                    <source src="demo-videos/Video 2-1772609567161.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-text">
+                        <span class="feature-label">Instant Search</span>
+                        <h2>Find any tab in milliseconds</h2>
+                        <p>Can't find the right tab? Just start typing. tab.flow's fuzzy search instantly finds what you
+                            need, even if you only remember part of the name. No more clicking through tabs one by one.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature 3: AI Assistant -->
+        <div class="feature-block">
+            <div class="container">
+                <div class="feature-row fade-in">
+                    <div class="feature-visual">
+                        <div class="demo-window">
+                            <div class="demo-content">
+                                <video autoplay loop muted playsinline>
+                                    <source src="demo-videos/Video 3 V2-1772612398814.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-text">
+                        <span class="feature-label">Meet <span class="flow-brand">flow</span></span>
+                        <h2>Your AI tab assistant</h2>
+                        <p>Just tell <span class="flow-brand">flow</span> what you need. Group your work tabs, close
+                            everything from yesterday, or save this session for later. <span
+                                class="flow-brand">flow</span> handles the rest.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature 4: Tab Groups -->
+        <div class="feature-block">
+            <div class="container">
+                <div class="feature-row reverse fade-in">
+                    <div class="feature-visual">
+                        <div class="demo-window">
+                            <div class="demo-content">
+                                <video autoplay loop muted playsinline>
+                                    <source src="demo-videos/Video 4-1772644252508.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-text">
+                        <span class="feature-label">Smart Groups</span>
+                        <h2>Smart grouping, zero effort</h2>
+                        <p>tab.flow spots patterns in your browsing and suggests smart groups automatically. One click
+                            to organize, with colors that make sense at a glance.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature 5: Workspaces -->
+        <div class="feature-block">
+            <div class="container">
+                <div class="feature-row fade-in">
+                    <div class="feature-visual">
+                        <div class="demo-window">
+                            <div class="demo-content">
+                                <video autoplay loop muted playsinline>
+                                    <source src="demo-videos/Video 5 V2-1772647407955.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-text">
+                        <span class="feature-label">Workspaces</span>
+                        <h2>Save your tabs, switch instantly</h2>
+                        <p>Juggling school, work, and weekend plans? Save your tabs as a workspace and switch between
+                            them instantly. Pick up right where you left off, every time.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature 6: Commands -->
+        <div class="feature-block">
+            <div class="container">
+                <div class="feature-row reverse fade-in">
+                    <div class="feature-visual">
+                        <div class="demo-window">
+
+                            <div class="demo-content">
+                                <video autoplay loop muted playsinline style="object-position: 35% center">
+                                    <source src="demo-videos/Video 6 V2-1772672180157.mp4" type="video/mp4">
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="feature-text">
+                        <span class="feature-label">Command Palette</span>
+                        <h2>Commands at your fingertips</h2>
+                        <p>Type <code>&gt;</code> to access powerful commands instantly. Close duplicates, sort tabs,
+                            pin groups, and more. Full keyboard navigation keeps you in the flow.</p>
+                        <button class="cmd-list-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+                            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                            View all commands
+                        </button>
+                        <div class="cmd-list-panel">
+                            <div class="cmd-list">
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Close duplicate tabs</span>
+                                    </div>
+                                </div>
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Close selected tabs</span>
+                                    </div>
+                                    <span class="cmd-item-kbd">Ctrl+Shift+X</span>
+                                </div>
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Group selected tabs</span>
+                                    </div>
+                                    <span class="cmd-item-kbd">Ctrl+G</span>
+                                </div>
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Ungroup selected tabs</span>
+                                    </div>
+                                    <span class="cmd-item-kbd">Ctrl+Shift+G</span>
+                                </div>
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Reopen last closed tab</span>
+                                    </div>
+                                    <span class="cmd-item-kbd">Ctrl+Shift+T</span>
+                                </div>
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Toggle window filter</span>
+                                    </div>
+                                    <span class="cmd-item-kbd">Ctrl+F</span>
+                                </div>
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Sort by name</span>
+                                    </div>
+                                    <span class="cmd-item-kbd">Ctrl+S</span>
+                                </div>
+                                <div class="cmd-item">
+                                    <div class="cmd-item-left">
+                                        <span class="cmd-item-label">Select all tabs</span>
+                                    </div>
+                                    <span class="cmd-item-kbd">Ctrl+A</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- More Features Grid -->
+    <section class="more-features">
+        <div class="container">
+            <div class="more-features-heading fade-in">
+                <h2>And so much more</h2>
+                <p>Small details that make a big difference.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card fade-in">
+                    <div class="feature-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                        </svg></div>
+                    <h3>Tab Suspender</h3>
+                    <p>Automatically suspend inactive tabs to free up memory. Pinned and audible tabs are never touched.
+                    </p>
+                </div>
+                <div class="feature-card fade-in fade-in-delay-1">
+                    <div class="feature-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+                        </svg></div>
+                    <h3>Cloud Sync</h3>
+                    <p>Sync your workspaces, bookmarks, pins, and settings across all your devices. Always pick up
+                        where you left off.</p>
+                </div>
+
+                <div class="feature-card fade-in fade-in-delay-1">
+                    <div class="feature-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                            <path d="M8 21h8M12 17v4" />
+                        </svg></div>
+                    <h3>Multi-Window</h3>
+                    <p>See and manage tabs across all browser windows. Move tabs between windows or merge them with one
+                        click.</p>
+                </div>
+                <div class="feature-card fade-in fade-in-delay-2">
+                    <div class="feature-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg></div>
+                    <h3>Undo Close</h3>
+                    <p>Accidentally closed a tab? An undo toast appears instantly, letting you restore it with one click
+                        or Ctrl+Z.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="pricing">
+        <div class="container">
+            <div class="pricing-heading fade-in">
+                <h2>Free. No Sign-Up.</h2>
+                <p>Every feature included. No tiers, no limits, no upsells.</p>
+            </div>
+            <div style="max-width:480px;margin:0 auto">
+                <div class="pricing-card featured fade-in">
+                    <div class="pricing-badge">Everything Included</div>
+                    <h3>tab.flow</h3>
+                    <div class="pricing-price">$0 <span class="period">forever</span></div>
+                    <p class="pricing-desc">All features, no restrictions, no account needed.</p>
+                    <ul class="pricing-features">
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>Full-screen grid HUD</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>Fuzzy search with filters</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>Tab groups &amp; auto-suggestions</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>Workspaces</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>Tab suspender</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>Keyboard navigation &amp; shortcuts</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>Command palette</li>
+                        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg><span>AI tab assistant <span class="flow-brand">flow</span></span></li>
+                    </ul>
+                    <a href="https://chrome.google.com/webstore" class="btn btn-primary">
+                        <svg class="chrome-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.8">
+                            <circle cx="12" cy="12" r="9.5" />
+                            <circle cx="12" cy="12" r="3.5" />
+                            <line x1="12" y1="2.5" x2="12" y2="8.5" />
+                            <line x1="3.8" y1="16.7" x2="9" y2="14" />
+                            <line x1="20.2" y1="16.7" x2="15" y2="14" />
+                        </svg>
+                        Install Now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="faq">
+        <div class="container">
+            <div class="faq-heading fade-in">
+                <h2>Common questions</h2>
+                <p>Can't find what you're looking for? <a href="mailto:support@tabflow.app">Email us</a></p>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item fade-in">
+                    <button class="faq-question" aria-expanded="false">What is tab.flow?<span
+                            class="faq-icon"></span></button>
+                    <div class="faq-answer">
+                        <p>tab.flow is a Chrome extension that replaces the cluttered tab strip with a full-screen grid
+                            overlay. It gives you fuzzy search, AI-powered organization, smart tab groups, workspaces,
+                            and keyboard-first navigation, all accessible with a single shortcut (Alt+Q).</p>
+                    </div>
+                </div>
+                <div class="faq-item fade-in">
+                    <button class="faq-question" aria-expanded="false">Is tab.flow really free?<span
+                            class="faq-icon"></span></button>
+                    <div class="faq-answer">
+                        <p>Yes! All features, including the grid HUD, fuzzy search, tab groups, AI assistant,
+                            workspaces, tab suspender, keyboard navigation, and command palette, are completely free
+                            with no sign-up required.</p>
+                    </div>
+                </div>
+                <div class="faq-item fade-in">
+                    <button class="faq-question" aria-expanded="false">Does tab.flow slow down my browser?<span
+                            class="faq-icon"></span></button>
+                    <div class="faq-answer">
+                        <p>No. tab.flow is designed to be lightweight. The overlay only renders when you activate it
+                            (Alt+Q). The tab suspender actually saves memory by discarding inactive tabs. Background
+                            processes use Chrome's alarms API and run at minimal intervals.</p>
+                    </div>
+                </div>
+                <div class="faq-item fade-in">
+                    <button class="faq-question" aria-expanded="false">How does the AI assistant work?<span
+                            class="faq-icon"></span></button>
+                    <div class="faq-answer">
+                        <p>Type @ in the search bar to activate <span class="flow-brand">flow</span>, your AI tab
+                            assistant. It understands natural language
+                            commands like "group my GitHub tabs" or "close tabs I haven't used today." You provide your
+                            own free Groq API key to get started.</p>
+                    </div>
+                </div>
+                <div class="faq-item fade-in">
+                    <button class="faq-question" aria-expanded="false">Can I sync across devices?<span
+                            class="faq-icon"></span></button>
+                    <div class="faq-answer">
+                        <p>Yes! Your workspaces, bookmarks, notes, and settings can sync across all your devices through
+                            our secure cloud backend, included for free with your tab.flow account.</p>
+                    </div>
+                </div>
+                <div class="faq-item fade-in">
+                    <button class="faq-question" aria-expanded="false">Which browsers are supported?<span
+                            class="faq-icon"></span></button>
+                    <div class="faq-answer">
+                        <p>tab.flow works on Chrome and all Chromium-based browsers including Edge, Brave, Arc, and
+                            Vivaldi.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <a href="#" class="nav-logo" style="font-size:1.5rem">
+                        <img src="TabFlowV4.png" alt="tab.flow" style="width:48px;height:48px">
+                        tab.flow
+                    </a>
+                    <p>A smarter way to manage, search, and organize your browser tabs.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <a href="#features">Features</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="https://chrome.google.com/webstore">Install</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <a href="privacy.html">Privacy Policy</a>
+                    <a href="terms.html">Terms of Service</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Support</h4>
+                    <a href="#faq">FAQ</a>
+                    <a href="mailto:support@tabflow.app">Contact</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 tab.flow. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const nav = document.getElementById('nav');
+        window.addEventListener('scroll', () => { nav.classList.toggle('scrolled', window.scrollY > 20) }, { passive: true });
+        const observer = new IntersectionObserver(e => { e.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }) }, { threshold: .1, rootMargin: '0px 0px -40px 0px' });
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+        document.querySelectorAll('video').forEach(v => { const isLast = v.closest('.feature-block:last-of-type'); v.playbackRate = isLast ? 1.15 : 1.25; });
+        document.querySelectorAll('.faq-question').forEach(btn => { btn.addEventListener('click', () => { const item = btn.parentElement; const isActive = item.classList.contains('active'); document.querySelectorAll('.faq-item.active').forEach(o => { o.classList.remove('active'); o.querySelector('.faq-question').setAttribute('aria-expanded', 'false') }); if (!isActive) { item.classList.add('active'); btn.setAttribute('aria-expanded', 'true') } }) });
+        document.querySelectorAll('a[href^="#"]').forEach(a => { a.addEventListener('click', e => { const t = document.querySelector(a.getAttribute('href')); if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }) } }) });
+    </script>
 </body>
+
 </html>
