@@ -105,15 +105,13 @@ TabFlow/
 
 ### Overview
 
-VIDEO_URL_HERE
+https://github.com/user-attachments/assets/f72c3d63-ea64-4318-8503-1d089ae1ce7a
 
 ---
 
 ### All your tabs in one beautiful grid
 
 See every open tab at a glance. One shortcut opens a stunning full screen view of your entire browser, beautifully laid out and ready to explore.
-
-VIDEO_URL_HERE
 
 ---
 
