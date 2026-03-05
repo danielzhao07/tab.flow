@@ -5,16 +5,16 @@
 <h1 align="center">tab.flow</h1>
 
 <p align="center">
-  <strong>The tab manager Chrome deserves.</strong><br/>
-  A full-stack Chrome extension that replaces your browser's tab bar with a stunning, keyboard-driven grid overlay — powered by AI.
+  <strong>Your browser, beautifully organized.</strong><br/>
+  Stop losing your tabs. tab.flow gives you a stunning visual grid, an AI tab assistant, and instant control. Just press Alt+Q.
 </p>
 
 <p align="center">
-  <a href="https://tabflow.tech">Website</a> &nbsp;&bull;&nbsp;
-  <a href="#demo">Demo</a> &nbsp;&bull;&nbsp;
-  <a href="#features">Features</a> &nbsp;&bull;&nbsp;
-  <a href="#tech-stack">Tech Stack</a> &nbsp;&bull;&nbsp;
-  <a href="#getting-started">Getting Started</a>
+  <a href="https://tabflow.tech">🌐 Website</a> &nbsp;&bull;&nbsp;
+  <a href="#demo">🎬 Demo</a> &nbsp;&bull;&nbsp;
+  <a href="#features">✨ Features</a> &nbsp;&bull;&nbsp;
+  <a href="#tech-stack">🛠 Tech Stack</a> &nbsp;&bull;&nbsp;
+  <a href="#getting-started">🚀 Getting Started</a>
 </p>
 
 <p align="center">
@@ -28,164 +28,149 @@
   <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg" alt="License: All Rights Reserved" />
 </p>
 
----
-
-## Why tab.flow?
-
-Power users juggle dozens of tabs across multiple windows. Chrome's native tab bar doesn't scale — tabs shrink to unreadable slivers, and `Ctrl+Tab` cycles linearly instead of by recency.
-
-**tab.flow fixes this.** One shortcut opens a full-screen grid of every tab you have open — searchable, sortable, and controllable with your keyboard, your mouse, or just plain English.
-
-- **MRU-first navigation** — tabs sorted by last access, not position
-- **Full-screen grid overlay** — inspired by Windows Alt+Tab, with live thumbnails and staggered animations
-- **AI tab assistant** — natural-language control: _"group my YouTube tabs"_, _"close all Reddit"_, _"save this session"_
-- **Fuzzy search with structured filters** — `is:pinned`, `domain:github.com`, `group:work`, and more
-- **Cloud-synced workspaces** — save and restore tab sets across devices
-- **Zero-config analytics** — passive browsing insights with frecency scoring
+<p align="center">
+  Free forever &nbsp;·&nbsp; No sign up required &nbsp;·&nbsp; Works on all Chromium browsers
+</p>
 
 ---
 
 <h2 id="demo">Demo</h2>
 
-> **Built for speed.** Every interaction — from opening the HUD to switching tabs — is designed to feel instant. Here's tab.flow in action:
-
 ### Overview
 
-<!-- To embed: drag each .mp4 into a GitHub Issue comment, copy the generated URL, and replace the src below -->
-
-https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Hero%20V4-1772607958625.mp4
+<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Hero%20V4-1772607958625.mp4" controls muted autoplay loop width="100%"></video>
 
 ---
 
-### The Big Picture — All your tabs in one beautiful grid
+### All your tabs in one beautiful grid
 
-See every open tab at a glance. One shortcut opens a stunning full-screen view of your entire browser, beautifully laid out and ready to explore.
+See every open tab at a glance. One shortcut opens a stunning full screen view of your entire browser, beautifully laid out and ready to explore.
 
-https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%201-1772606155839.mp4
+<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%201-1772606155839.mp4" controls muted autoplay loop width="100%"></video>
 
 ---
 
-### Instant Search — Find any tab in milliseconds
+### Find any tab in milliseconds
 
 Can't find the right tab? Just start typing. tab.flow's fuzzy search instantly finds what you need, even if you only remember part of the name. No more clicking through tabs one by one.
 
-https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%202-1772609567161.mp4
+<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%202-1772609567161.mp4" controls muted autoplay loop width="100%"></video>
 
 ---
 
-### Meet flow — Your AI tab assistant
+### Meet flow, your AI tab assistant
 
 Just tell **flow** what you need. Group your work tabs, close everything from yesterday, or save this session for later. **flow** handles the rest. Powered by Groq's LLaMA 3.3 70B with 21 action types.
 
-https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%203%20V2-1772612398814.mp4
+<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%203%20V2-1772612398814.mp4" controls muted autoplay loop width="100%"></video>
 
 ---
 
-### Smart Groups — Smart grouping, zero effort
+### Smart grouping, zero effort
 
-tab.flow spots patterns in your browsing and suggests smart groups automatically. One click to organize, with brand-aware colors that make sense at a glance.
+tab.flow spots patterns in your browsing and suggests smart groups automatically. One click to organize, with brand aware colors that make sense at a glance.
 
-https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%204-1772644252508.mp4
+<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%204-1772644252508.mp4" controls muted autoplay loop width="100%"></video>
 
 ---
 
-### Workspaces — Save your tabs, switch instantly
+### Save your tabs, switch instantly
 
 Juggling school, work, and weekend plans? Save your tabs as a workspace and switch between them instantly. Pick up right where you left off, every time.
 
-https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%205%20V2-1772647407955.mp4
+<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%205%20V2-1772647407955.mp4" controls muted autoplay loop width="100%"></video>
 
 ---
 
-### Command Palette — Commands at your fingertips
+### Commands at your fingertips
 
 Type `>` to access powerful commands instantly. Close duplicates, sort tabs, pin groups, and more. Full keyboard navigation keeps you in the flow.
 
-https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20V2-1772672180157.mp4
+<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20V2-1772672180157.mp4" controls muted autoplay loop width="100%"></video>
 
 ---
 
 <h2 id="features">Features</h2>
 
 ### Core Tab Management
-- Full-screen HUD overlay triggered by **Alt+Q** with backdrop blur and staggered card entry animations
+- Full screen HUD overlay triggered by **Alt+Q** with backdrop blur and staggered card entry animations
 - Most Recently Used (MRU) ordering tracked by a persistent background service worker
-- Fuzzy search across titles, URLs, and notes (Fuse.js with configurable threshold 0.1–0.8)
+- Fuzzy search across titles, URLs, and notes powered by Fuse.js with configurable threshold (0.1 to 0.8)
 - Structured filters: `is:pinned`, `is:audible`, `is:duplicate`, `is:suspended`, `is:active`, `domain:x`, `group:x`
-- 2D arrow-key grid navigation with Enter to switch, Backspace to close
-- Drag-to-reorder, multi-select (Ctrl+Click / Shift+Click), and bulk operations
-- Tab group support with Chrome's native colors, auto-group suggestions by domain, and group dissolve
-- Duplicate detection with yellow "DUP" badge, tab count badge on extension icon
-- Quick-switch: double-tap Alt+Q to jump to your previous tab instantly
+- 2D arrow key grid navigation with Enter to switch and Backspace to close
+- Drag to reorder, multi select (Ctrl+Click / Shift+Click), and bulk operations
+- Tab group support with Chrome's native colors, auto group suggestions by domain, and group dissolve
+- Duplicate detection with yellow DUP badge and tab count badge on the extension icon
+- Quick switch: double tap Alt+Q to jump to your previous tab instantly
 - Live tab thumbnails captured via `captureVisibleTab` (JPEG, LRU cache of 40)
 - Active tab highlighted with spinning border glow animation
-- 300ms close animation with undo toast (5-second window to restore)
+- 300ms close animation with undo toast (5 second window to restore)
 
 ### AI Tab Assistant
 - Type **@** in the search bar to activate the AI agent
 - Powered by **Groq** running **LLaMA 3.3 70B Versatile** (temperature 0.1, JSON mode)
-- Understands all open tabs with full context (titles, URLs, domains, groups, windows, flags)
+- Understands all open tabs with full context including titles, URLs, domains, groups, windows, and flags
 - **21 action types**: group tabs, close tabs, open URLs, pin, mute, bookmark (with folder creation), switch, move to new window, split view, merge windows, create workspace, duplicate, reload, discard, rename groups, close by domain, and more
 - Smart URL construction for 50+ services (YouTube, Spotify, Google Maps, Amazon, Reddit, etc.)
-- Prompt history with arrow-up/down navigation (persisted across sessions, max 50)
-- Thinking indicator with spinning sparkle, action checklist with checkmarks/spinners
+- Prompt history with arrow up/down navigation, persisted across sessions (max 50)
+- Thinking indicator with spinning sparkle and action checklist with checkmarks/spinners
 - Users provide their own free Groq API key in settings
 
 ### Workspaces
-- Save current window's tabs as a named workspace (auto-filters restricted URLs)
-- Restore workspace in a new window with tab groups recreated (correct names + colors)
+- Save current window's tabs as a named workspace with automatic filtering of restricted URLs
+- Restore workspace in a new window with tab groups recreated including correct names and colors
 - Update existing workspace with current tabs, or delete
-- Workspace chips show favicon stack (first 3 tabs) + name + tab count
-- Stored locally + synced to cloud API when signed in
+- Workspace chips show favicon stack (first 3 tabs) plus name and tab count
+- Stored locally and synced to cloud API when signed in
 
 ### Tab Suspender
 - Automatically discards inactive tabs to reclaim memory
-- Configurable inactivity threshold: 5 min to 2 hours (slider)
+- Configurable inactivity threshold from 5 minutes to 2 hours (slider)
 - Never suspends pinned, active, or audible tabs
 - Runs via `chrome.alarms` every 5 minutes
 
 ### Notes & Bookmarks
-- Attach text notes to any URL — displayed as cyan italic text on grid cards
+- Attach text notes to any URL, displayed as cyan italic text on grid cards
 - Notes included in fuzzy search (weight 0.2) and synced to cloud when signed in
-- Dual bookmark system: local tab.flow bookmarks + Chrome native bookmarks via `chrome.bookmarks` API
+- Dual bookmark system: local tab.flow bookmarks plus Chrome native bookmarks via `chrome.bookmarks` API
 - Star badge on bookmarked tabs, toggle via Ctrl+B or context menu with folder creation
 
 ### Analytics & Frecency
-- Passive visit tracking: records URL, domain, title, and focus duration on every tab switch
-- Top 3 visited domains shown in the HUD's top bar (with brand-name mapping for 50+ sites)
-- Frecency scoring (frequency × recency with 24-hour half-life) for sort mode and fallback analytics
+- Passive visit tracking that records URL, domain, title, and focus duration on every tab switch
+- Top 3 visited domains shown in the HUD's top bar with brand name mapping for 50+ sites
+- Frecency scoring (frequency x recency with 24 hour half life) for sort mode and fallback analytics
 - Click a domain to jump to a matching tab, or open it
 
-### Multi-Window Management
-- Window strip shows all open windows with active tab favicon, title, tab count, and current-window indicator
+### Multi Window Management
+- Window strip shows all open windows with active tab favicon, title, tab count, and current window indicator
 - Click to focus/switch windows
 - Move tabs between windows, merge all windows, or split to new windows
 
 ### Context Menu & Commands
-- Right-click any tab card for: Pin, Bookmark, Mute, Duplicate, Move to new window, Reload, Group/Ungroup, Snooze, Close
-- Multi-select context menu: all above operations in bulk for N selected tabs
+- Right click any tab card for: Pin, Bookmark, Mute, Duplicate, Move to new window, Reload, Group/Ungroup, Snooze, Close
+- Multi select context menu for all operations in bulk across N selected tabs
 - Command palette (`>` prefix): close duplicates, close selected, group/ungroup, reopen last closed, sort by name, select all
 
 ### Popup
 - Compact 340px mini interface accessible from the toolbar icon
-- Stats bar: total tabs, windows, pinned, suspended, estimated memory saved
-- Top 7 recent tabs + workspaces view with save/restore/delete
+- Stats bar showing total tabs, windows, pinned, suspended, and estimated memory saved
+- Top 7 recent tabs plus workspaces view with save/restore/delete
 - Footer hint: "Alt+Q for full switcher"
 
 ### Export / Import
 - Export all data (settings, workspaces, bookmarks, notes) as a versioned JSON file
-- Import from JSON with validation — available from the options page
+- Import from JSON with validation, available from the options page
 
 ---
 
 ## Keyboard Shortcuts
 
-### Global (Chrome-level)
+### Global
 
 | Shortcut | Action |
 |---|---|
 | `Alt+Q` | Toggle HUD overlay |
-| `Alt+Q` × 2 | Quick-switch to previous tab (< 400ms) |
+| `Alt+Q` x 2 | Quick switch to previous tab (under 400ms) |
 
 ### Navigation
 
@@ -195,14 +180,14 @@ https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20
 | `Tab` / `Shift+Tab` | Forward / back navigation |
 | `Enter` | Switch to selected tab |
 | `Esc` | Close HUD |
-| `1`–`9` | Quick-switch to tab by position |
+| `1` to `9` | Quick switch to tab by position |
 
 ### Tab Actions
 
 | Shortcut | Action |
 |---|---|
 | `Ctrl+X` | Close selected tab |
-| `Ctrl+Shift+X` | Close all multi-selected tabs |
+| `Ctrl+Shift+X` | Close all multi selected tabs |
 | `Ctrl+Shift+T` | Reopen last closed tab |
 | `Ctrl+B` | Bookmark / unbookmark selected tab |
 | `Ctrl+M` | Mute / unmute selected tab |
@@ -221,7 +206,7 @@ https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+S` | Sort by name (toggle MRU / A–Z) |
+| `Ctrl+S` | Sort by name (toggle MRU / A to Z) |
 | `Ctrl+F` | Toggle window filter (all / current) |
 | `>` | Open command palette |
 | `@` | Activate AI agent |
@@ -234,12 +219,12 @@ https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20
 
 | Technology | Purpose |
 |---|---|
-| **WXT 0.19** | Manifest V3 framework — shadow DOM content script, HMR dev server |
+| **WXT 0.19** | Manifest V3 framework with shadow DOM content script and HMR dev server |
 | **React 19** | HUD overlay UI injected via content script |
-| **TypeScript 5.6** | End-to-end type safety |
-| **Tailwind CSS 3.4** | Utility-first styling scoped to shadow DOM |
+| **TypeScript 5.6** | End to end type safety |
+| **Tailwind CSS 3.4** | Utility first styling scoped to shadow DOM |
 | **Fuse.js 7** | Weighted fuzzy search (title 0.7, URL 0.3, notes 0.2) |
-| **Groq SDK** | LLaMA 3.3 70B AI tab assistant (client-side, user's API key) |
+| **Groq SDK** | LLaMA 3.3 70B AI tab assistant (client side, user's API key) |
 | **Chrome APIs** | tabs, tabGroups, sessions, storage, alarms, identity, bookmarks, captureVisibleTab |
 
 ### API (`apps/api/`)
@@ -248,21 +233,21 @@ https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20
 |---|---|
 | **Express.js 5** | REST API server |
 | **TypeScript 5.7** | Shared type safety with the extension |
-| **Drizzle ORM** | Type-safe SQL queries and schema migrations |
+| **Drizzle ORM** | Type safe SQL queries and schema migrations |
 | **postgres.js 3** | PostgreSQL driver (SSL for Neon serverless) |
 | **Zod** | Runtime request validation |
 | **express-jwt + jwks-rsa** | AWS Cognito JWT verification via JWKS rotation |
-| **Google Gemini** | `gemini-embedding-001` for 768-dim tab embeddings |
+| **Google Gemini** | `gemini-embedding-001` for 768 dim tab embeddings |
 
 ### Infrastructure
 
 | Service | Purpose |
 |---|---|
-| **Neon** | Serverless PostgreSQL — workspaces, bookmarks, notes, analytics, settings |
+| **Neon** | Serverless PostgreSQL for workspaces, bookmarks, notes, analytics, and settings |
 | **AWS Cognito** | OAuth 2.0 Authorization Code + PKCE authentication |
 | **AWS S3** | Tab thumbnail storage with presigned URLs |
-| **Groq** | LLaMA 3.3 70B inference for AI tab assistant |
-| **Google Gemini** | Embedding model for server-side semantic search |
+| **Groq** | LLaMA 3.3 70B inference for the AI tab assistant |
+| **Google Gemini** | Embedding model for server side semantic search |
 
 ### Architecture
 
@@ -270,9 +255,9 @@ https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20
 TabFlow/
 ├── apps/
 │   ├── extension/               # Chrome extension (WXT + React 19)
-│   │   ├── components/hud/      # HUD overlay — 12 components
+│   │   ├── components/hud/      # HUD overlay, 12 components
 │   │   ├── entrypoints/         # background, content, popup, options, auth
-│   │   ├── lib/                 # Core logic — search, hooks, AI, storage
+│   │   ├── lib/                 # Core logic: search, hooks, AI, storage
 │   │   └── assets/              # Global CSS + animations
 │   └── api/                     # Express.js v5 REST API
 │       └── src/
@@ -292,7 +277,7 @@ TabFlow/
 
 - Node.js 18+
 - pnpm 9+ (`npm install -g pnpm`)
-- Chrome or Chromium-based browser
+- Chrome or Chromium based browser
 - (Optional) Neon PostgreSQL database for cloud sync
 - (Optional) AWS account for Cognito auth + S3 thumbnails
 - (Optional) Groq API key for AI tab assistant (free at [console.groq.com](https://console.groq.com))
@@ -310,9 +295,9 @@ pnpm build
 
 1. Navigate to `chrome://extensions`
 2. Enable **Developer mode**
-3. Click **Load unpacked** → select `apps/extension/.output/chrome-mv3`
+3. Click **Load unpacked** and select `apps/extension/.output/chrome-mv3`
 
-### API Setup (optional — for cloud sync)
+### API Setup (optional, for cloud sync)
 
 ```bash
 cp apps/api/.env.example apps/api/.env
@@ -350,7 +335,7 @@ pnpm dev:all
 
 ## License
 
-Copyright (c) 2025-2026 Daniel Zhao. All rights reserved.
+Copyright (c) 2025 Daniel Zhao. All rights reserved.
 
 This software and associated documentation files (the "Software") are proprietary and confidential. Unauthorized copying, modification, distribution, or use of this Software, via any medium, is strictly prohibited without express written permission from the copyright holder.
 
