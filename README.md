@@ -10,11 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://tabflow.tech">🌐 Website</a> &nbsp;&bull;&nbsp;
-  <a href="#demo">🎬 Demo</a> &nbsp;&bull;&nbsp;
-  <a href="#features">✨ Features</a> &nbsp;&bull;&nbsp;
-  <a href="#tech-stack">🛠 Tech Stack</a> &nbsp;&bull;&nbsp;
-  <a href="#getting-started">🚀 Getting Started</a>
+  <a href="https://tabflow.tech">Website</a> &nbsp;&bull;&nbsp;
+  <a href="#demo">Demo</a> &nbsp;&bull;&nbsp;
+  <a href="#tech-stack">Tech Stack</a> &nbsp;&bull;&nbsp;
+  <a href="#features">Features</a> &nbsp;&bull;&nbsp;
+  <a href="#getting-started">Getting Started</a>
 </p>
 
 <p align="center">
@@ -29,16 +29,83 @@
 </p>
 
 <p align="center">
-  Free forever &nbsp;·&nbsp; No sign up required &nbsp;·&nbsp; Works on all Chromium browsers
+  Free forever &nbsp;&middot;&nbsp; No sign up required &nbsp;&middot;&nbsp; Works on all Chromium browsers
 </p>
+
+---
+
+<h2 id="tech-stack">Tech Stack</h2>
+
+### Extension (`apps/extension/`)
+
+| Technology | Purpose |
+|---|---|
+| **WXT 0.19** | Manifest V3 framework with shadow DOM content script and HMR dev server |
+| **React 19** | HUD overlay UI injected via content script |
+| **TypeScript 5.6** | End to end type safety |
+| **Tailwind CSS 3.4** | Utility first styling scoped to shadow DOM |
+| **Fuse.js 7** | Weighted fuzzy search (title 0.7, URL 0.3, notes 0.2) |
+| **Groq SDK** | LLaMA 3.3 70B AI tab assistant (client side, user's API key) |
+| **Chrome APIs** | tabs, tabGroups, sessions, storage, alarms, identity, bookmarks, captureVisibleTab |
+
+### API (`apps/api/`)
+
+| Technology | Purpose |
+|---|---|
+| **Express.js 5** | REST API server |
+| **TypeScript 5.7** | Shared type safety with the extension |
+| **Drizzle ORM** | Type safe SQL queries and schema migrations |
+| **postgres.js 3** | PostgreSQL driver (SSL for Neon serverless) |
+| **Zod** | Runtime request validation |
+| **express-jwt + jwks-rsa** | AWS Cognito JWT verification via JWKS rotation |
+| **Google Gemini** | `gemini-embedding-001` for 768 dim tab embeddings |
+
+### Infrastructure
+
+| Service | Purpose |
+|---|---|
+| **Neon** | Serverless PostgreSQL for workspaces, bookmarks, notes, analytics, and settings |
+| **AWS Cognito** | OAuth 2.0 Authorization Code + PKCE authentication |
+| **AWS S3** | Tab thumbnail storage with presigned URLs |
+| **Groq** | LLaMA 3.3 70B inference for the AI tab assistant |
+| **Google Gemini** | Embedding model for server side semantic search |
+
+### Architecture
+
+```
+TabFlow/
+├── apps/
+│   ├── extension/               # Chrome extension (WXT + React 19)
+│   │   ├── components/hud/      # HUD overlay, 12 components
+│   │   ├── entrypoints/         # background, content, popup, options, auth
+│   │   ├── lib/                 # Core logic: search, hooks, AI, storage
+│   │   └── assets/              # Global CSS + animations
+│   └── api/                     # Express.js v5 REST API
+│       └── src/
+│           ├── routes/          # auth, sync, ai, analytics, thumbnails
+│           ├── db/              # Drizzle ORM schema (7 tables)
+│           ├── middleware/      # Cognito JWT auth
+│           └── services/        # S3 client
+├── docs/                        # Website, privacy policy, terms
+└── package.json                 # pnpm monorepo scripts
+```
 
 ---
 
 <h2 id="demo">Demo</h2>
 
+> Visit [tabflow.tech](https://tabflow.tech) to see all demos with autoplay.
+
+<!-- HOW TO ADD INLINE VIDEOS:
+     1. Go to https://github.com/danielzhao07/TabFlowV1/issues/new
+     2. Drag and drop each .mp4 file from docs/demo-videos/ into the comment box
+     3. GitHub will generate a URL like: https://github.com/user/attachments/assets/xxxx/video.mp4
+     4. Replace each VIDEO_URL_HERE below with the generated URL
+     5. Delete this comment block when done -->
+
 ### Overview
 
-<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Hero%20V4-1772607958625.mp4" controls muted autoplay loop width="100%"></video>
+VIDEO_URL_HERE
 
 ---
 
@@ -46,7 +113,7 @@
 
 See every open tab at a glance. One shortcut opens a stunning full screen view of your entire browser, beautifully laid out and ready to explore.
 
-<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%201-1772606155839.mp4" controls muted autoplay loop width="100%"></video>
+VIDEO_URL_HERE
 
 ---
 
@@ -54,7 +121,7 @@ See every open tab at a glance. One shortcut opens a stunning full screen view o
 
 Can't find the right tab? Just start typing. tab.flow's fuzzy search instantly finds what you need, even if you only remember part of the name. No more clicking through tabs one by one.
 
-<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%202-1772609567161.mp4" controls muted autoplay loop width="100%"></video>
+VIDEO_URL_HERE
 
 ---
 
@@ -62,7 +129,7 @@ Can't find the right tab? Just start typing. tab.flow's fuzzy search instantly f
 
 Just tell **flow** what you need. Group your work tabs, close everything from yesterday, or save this session for later. **flow** handles the rest. Powered by Groq's LLaMA 3.3 70B with 21 action types.
 
-<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%203%20V2-1772612398814.mp4" controls muted autoplay loop width="100%"></video>
+VIDEO_URL_HERE
 
 ---
 
@@ -70,7 +137,7 @@ Just tell **flow** what you need. Group your work tabs, close everything from ye
 
 tab.flow spots patterns in your browsing and suggests smart groups automatically. One click to organize, with brand aware colors that make sense at a glance.
 
-<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%204-1772644252508.mp4" controls muted autoplay loop width="100%"></video>
+VIDEO_URL_HERE
 
 ---
 
@@ -78,7 +145,7 @@ tab.flow spots patterns in your browsing and suggests smart groups automatically
 
 Juggling school, work, and weekend plans? Save your tabs as a workspace and switch between them instantly. Pick up right where you left off, every time.
 
-<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%205%20V2-1772647407955.mp4" controls muted autoplay loop width="100%"></video>
+VIDEO_URL_HERE
 
 ---
 
@@ -86,7 +153,7 @@ Juggling school, work, and weekend plans? Save your tabs as a workspace and swit
 
 Type `>` to access powerful commands instantly. Close duplicates, sort tabs, pin groups, and more. Full keyboard navigation keeps you in the flow.
 
-<video src="https://github.com/danielzhao07/TabFlowV1/raw/main/docs/demo-videos/Video%206%20V2-1772672180157.mp4" controls muted autoplay loop width="100%"></video>
+VIDEO_URL_HERE
 
 ---
 
@@ -210,64 +277,6 @@ Type `>` to access powerful commands instantly. Close duplicates, sort tabs, pin
 | `Ctrl+F` | Toggle window filter (all / current) |
 | `>` | Open command palette |
 | `@` | Activate AI agent |
-
----
-
-<h2 id="tech-stack">Tech Stack</h2>
-
-### Extension (`apps/extension/`)
-
-| Technology | Purpose |
-|---|---|
-| **WXT 0.19** | Manifest V3 framework with shadow DOM content script and HMR dev server |
-| **React 19** | HUD overlay UI injected via content script |
-| **TypeScript 5.6** | End to end type safety |
-| **Tailwind CSS 3.4** | Utility first styling scoped to shadow DOM |
-| **Fuse.js 7** | Weighted fuzzy search (title 0.7, URL 0.3, notes 0.2) |
-| **Groq SDK** | LLaMA 3.3 70B AI tab assistant (client side, user's API key) |
-| **Chrome APIs** | tabs, tabGroups, sessions, storage, alarms, identity, bookmarks, captureVisibleTab |
-
-### API (`apps/api/`)
-
-| Technology | Purpose |
-|---|---|
-| **Express.js 5** | REST API server |
-| **TypeScript 5.7** | Shared type safety with the extension |
-| **Drizzle ORM** | Type safe SQL queries and schema migrations |
-| **postgres.js 3** | PostgreSQL driver (SSL for Neon serverless) |
-| **Zod** | Runtime request validation |
-| **express-jwt + jwks-rsa** | AWS Cognito JWT verification via JWKS rotation |
-| **Google Gemini** | `gemini-embedding-001` for 768 dim tab embeddings |
-
-### Infrastructure
-
-| Service | Purpose |
-|---|---|
-| **Neon** | Serverless PostgreSQL for workspaces, bookmarks, notes, analytics, and settings |
-| **AWS Cognito** | OAuth 2.0 Authorization Code + PKCE authentication |
-| **AWS S3** | Tab thumbnail storage with presigned URLs |
-| **Groq** | LLaMA 3.3 70B inference for the AI tab assistant |
-| **Google Gemini** | Embedding model for server side semantic search |
-
-### Architecture
-
-```
-TabFlow/
-├── apps/
-│   ├── extension/               # Chrome extension (WXT + React 19)
-│   │   ├── components/hud/      # HUD overlay, 12 components
-│   │   ├── entrypoints/         # background, content, popup, options, auth
-│   │   ├── lib/                 # Core logic: search, hooks, AI, storage
-│   │   └── assets/              # Global CSS + animations
-│   └── api/                     # Express.js v5 REST API
-│       └── src/
-│           ├── routes/          # auth, sync, ai, analytics, thumbnails
-│           ├── db/              # Drizzle ORM schema (7 tables)
-│           ├── middleware/      # Cognito JWT auth
-│           └── services/        # S3 client
-├── docs/                        # Website, privacy policy, terms
-└── package.json                 # pnpm monorepo scripts
-```
 
 ---
 
