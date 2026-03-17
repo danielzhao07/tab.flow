@@ -22,3 +22,6 @@ implementation.md
 
 # Test scripts
 apps/api/test-aws.mjs
+
+# Worktrees
+.worktrees/
