@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: {
     name: 'tab.flow',
     description: 'Stop losing your tabs. tab.flow gives you a stunning visual grid, an AI tab assistant, and instant control. Just press Alt+Q.',
-    version: '1.0.0',
+    version: '1.0.1',
     icons: {
       '16': 'icon-16.png',
       '32': 'icon-32.png',
