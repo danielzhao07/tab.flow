@@ -17,6 +17,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { checkHealth } from '@/lib/api-client';
 import { getStoredTokens, type TokenSet } from '@/lib/auth';
+import { markReactReady } from '@/lib/hud-bridge';
 import { AiAgentPanel, AiThinkingBar } from './AiAgentPanel';
 import type { AgentResult, AgentAction } from '@/lib/agent';
 import type { TabInfo } from '@/lib/types';
@@ -44,7 +45,7 @@ export function HudOverlay() {
 
   const panelRef = useCallback((node: HTMLDivElement | null) => {
     if (node) {
-      requestAnimationFrame(() => requestAnimationFrame(() => s.setAnimatingIn(true)));
+      requestAnimationFrame(() => s.setAnimatingIn(true));
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -55,11 +56,18 @@ export function HudOverlay() {
   }, [s.query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll tab list every 750ms while HUD is visible — catches external closes/creates
-  // that may not reach the content-script message listener (e.g. chrome:// tab constraints)
+  // that may not reach the content-script message listener (e.g. chrome:// tab constraints).
+  // Delayed start: skip the first 600ms so the initial fetchTabs() completes without competing polls.
   useEffect(() => {
     if (!s.visible) return;
-    const interval = setInterval(() => { if (!aiExecutingRef.current) s.fetchTabs(); }, 750);
-    return () => clearInterval(interval);
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    const delayId = setTimeout(() => {
+      intervalId = setInterval(() => { if (!aiExecutingRef.current) s.fetchTabs(); }, 750);
+    }, 600);
+    return () => {
+      clearTimeout(delayId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [s.visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -74,6 +82,34 @@ export function HudOverlay() {
 
   // Listen for messages from background
   useEffect(() => {
+    // Helper: everything that needs to happen when the HUD opens
+    const openHud = () => {
+      s.fetchTabs();
+      s.fetchRecentTabs();
+      loadHudData(s);
+      s.loadUndoStack();
+      chrome.storage.local.get('tabflow_prompt_history').then((result) => {
+        if (Array.isArray(result.tabflow_prompt_history)) {
+          promptHistoryRef.current = result.tabflow_prompt_history;
+        }
+      }).catch(() => {});
+      chrome.runtime.sendMessage({ type: 'get-all-thumbnails' }).then((res) => {
+        if (res?.thumbnails) {
+          s.setThumbnails(new Map(
+            Object.entries(res.thumbnails).map(([k, v]) => [Number(k), v as string])
+          ));
+        }
+      }).catch(() => {});
+      checkHealth().catch(() => {});
+      getStoredTokens().then(setAuthUser);
+    };
+
+    // Check if toggle-hud arrived before React mounted (race condition fix)
+    if (markReactReady()) {
+      s.setVisible(true);
+      openHud();
+    }
+
     const listener = (message: { type: string; tabId?: number; title?: string }) => {
       if (message.type === 'hide-hud') {
         s.hide();
@@ -83,38 +119,7 @@ export function HudOverlay() {
       if (message.type === 'toggle-hud') {
         s.setVisible((prev) => {
           if (!prev) {
-            s.fetchTabs();
-            s.fetchRecentTabs();
-            loadHudData(s);
-            // Reload undo stack from storage so Ctrl+Z always works, even after
-            // tab switches or extended periods of inactivity.
-            s.loadUndoStack();
-            // Reload prompt history from storage in case another tab updated it
-            chrome.storage.local.get('tabflow_prompt_history').then((result) => {
-              if (Array.isArray(result.tabflow_prompt_history)) {
-                promptHistoryRef.current = result.tabflow_prompt_history;
-              }
-            }).catch(() => {});
-            chrome.runtime.sendMessage({ type: 'get-all-thumbnails' }).then((res) => {
-              if (res?.thumbnails) {
-                s.setThumbnails(new Map(
-                  Object.entries(res.thumbnails).map(([k, v]) => [Number(k), v as string])
-                ));
-              }
-            }).catch(() => {});
-            // Retry after 500ms to pick up captures that completed after initial fetch
-            // (e.g. tabs still loading, restricted-tab path captures)
-            setTimeout(() => {
-              chrome.runtime.sendMessage({ type: 'get-all-thumbnails' }).then((res) => {
-                if (res?.thumbnails) {
-                  s.setThumbnails(new Map(
-                    Object.entries(res.thumbnails).map(([k, v]) => [Number(k), v as string])
-                  ));
-                }
-              }).catch(() => {});
-            }, 500);
-            checkHealth().catch(() => {});
-            getStoredTokens().then(setAuthUser);
+            openHud();
             return true;
           }
           s.hide();
@@ -162,6 +167,11 @@ export function HudOverlay() {
         chrome.runtime.sendMessage({ type: 'get-windows' }).then((res) => {
           if (res?.windows) s.setOtherWindows(res.windows);
         }).catch(() => {});
+      }
+      if (message.type === 'thumbnails-updated' && s.visible && (message as any).thumbnails) {
+        s.setThumbnails(new Map(
+          Object.entries((message as any).thumbnails).map(([k, v]) => [Number(k), v as string])
+        ));
       }
       if (message.type === 'workspace-updated' && s.visible) {
         setWsRefreshKey((k) => k + 1);
@@ -438,7 +448,7 @@ export function HudOverlay() {
         zIndex: 2147483647,
         backgroundColor: s.animatingIn ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
         backdropFilter: s.animatingIn ? 'blur(28px) saturate(180%)' : 'blur(0px)',
-        transition: 'background-color 180ms ease-out, backdrop-filter 180ms ease-out',
+        transition: 'background-color 120ms ease-out, backdrop-filter 120ms ease-out',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
@@ -460,7 +470,7 @@ export function HudOverlay() {
         style={{
           opacity: s.animatingIn ? 1 : 0,
           transform: s.animatingIn ? 'translateY(0)' : 'translateY(10px)',
-          transition: 'opacity 180ms ease-out, transform 180ms ease-out',
+          transition: 'opacity 120ms ease-out, transform 120ms ease-out',
         }}
       >
         {/* Top bar: logo + tab count + analytics (left) · gear (right) — in flow so grid doesn't overlap */}
@@ -554,7 +564,7 @@ export function HudOverlay() {
         {/* Bottom section: workspaces + search — pinned to bottom */}
         <div className="shrink-0">
           <GroupSuggestions
-            tabs={s.windowFilter === 'current' && s.currentWindowId
+            tabs={s.currentWindowId
               ? s.tabs.filter((t) => t.windowId === s.currentWindowId)
               : s.tabs}
             actions={a}

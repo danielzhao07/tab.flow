@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import type { TabBookmark } from '@/lib/bookmarks';
 import type { UndoRecord, TabInfo } from '@/lib/types';
 import type { HudState } from './useHudState';
-import { getDomain, getGroupTitle, getSmartGroupName } from '@/lib/group-utils';
+import { getDomain, getGroupTitle, getSmartGroupName, findRelatedTabs } from '@/lib/group-utils';
 
 export interface TabActions {
   switchToTab: (tabId: number) => void;
@@ -46,7 +46,10 @@ const MAX_UNDO_STACK = 20;
 
 export function useTabActions(s: HudState): TabActions {
   const pushUndo = useCallback((record: UndoRecord) => {
-    s.setUndoStack((prev) => [record, ...prev].slice(0, MAX_UNDO_STACK));
+    // Tag every undo record with the current window so Ctrl+Z only undoes
+    // actions from the window the user is currently in.
+    const tagged = { ...record, windowId: record.windowId ?? s.currentWindowId };
+    s.setUndoStack((prev) => [tagged, ...prev].slice(0, MAX_UNDO_STACK));
     s.setUndoToast({ message: record.label });
   }, [s]);
 
@@ -172,10 +175,8 @@ export function useTabActions(s: HudState): TabActions {
     if (s.selectedTabs.size === 0) return;
     const tabIds = [...s.selectedTabs];
     const selectedTabInfos = tabIds.map((id) => s.tabs.find((t) => t.tabId === id)).filter(Boolean) as TabInfo[];
-    // Fetch meta descriptions from pages for richer context
-    const descRes = await chrome.runtime.sendMessage({ type: 'get-tab-descriptions', payload: { tabIds } }).catch(() => null);
-    const descriptions: Record<number, string> = descRes?.descriptions ?? {};
-    const title = getSmartGroupName(selectedTabInfos, descriptions);
+    // Generate name from titles first (instant), don't block on description fetch
+    const title = getSmartGroupName(selectedTabInfos);
     const topDomain = getDomain(selectedTabInfos[0]?.url ?? '');
     const usedColors = new Set(s.tabs.filter((t) => t.groupColor).map((t) => t.groupColor!));
     const color = pickGroupColor(topDomain, usedColors);
@@ -280,12 +281,26 @@ export function useTabActions(s: HudState): TabActions {
   }, [s]);
 
   const groupSuggestionTabs = useCallback(async (tabIds: number[], label: string) => {
-    const firstTab = s.tabs.find((t) => t.tabId === tabIds[0]);
+    // Expand the suggestion to include related ungrouped tabs that belong in the
+    // same group (same domain, brand, semantic category, or keyword overlap).
+    // Only consider tabs in the current window — never pull from other windows.
+    const windowTabs = s.currentWindowId
+      ? s.tabs.filter((t) => t.windowId === s.currentWindowId)
+      : s.tabs;
+    const seedTabs = windowTabs.filter((t) => tabIds.includes(t.tabId));
+    const extraIds = findRelatedTabs(seedTabs, windowTabs, label);
+    const allIds = [...new Set([...tabIds, ...extraIds])];
+
+    const firstTab = s.tabs.find((t) => t.tabId === allIds[0]);
     const topDomain = getDomain(firstTab?.url ?? '');
     const usedColors = new Set(s.tabs.filter((t) => t.groupColor).map((t) => t.groupColor!));
     const color = pickGroupColor(topDomain, usedColors);
-    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds, title: label, color } });
-    await new Promise<void>((r) => setTimeout(r, 150));
+    const tabIdSet = new Set(allIds);
+    // Optimistic update: mark tabs as grouped immediately so the UI feels instant
+    s.setTabs((prev) => prev.map((t) =>
+      tabIdSet.has(t.tabId) ? { ...t, groupTitle: label, groupColor: color } : t
+    ));
+    await chrome.runtime.sendMessage({ type: 'group-tabs', payload: { tabIds: allIds, title: label, color } });
     s.fetchTabs();
   }, [s]);
 
@@ -407,8 +422,14 @@ export function useTabActions(s: HudState): TabActions {
       ? (stored as Record<string, unknown>).tabflow_undo_stack as UndoRecord[] : [];
     if (stack.length === 0) return;
 
-    const record = stack[0];
-    const remaining = stack.slice(1);
+    // Find the most recent undo record for the CURRENT window.
+    // Records without a windowId (legacy) are always eligible.
+    const wid = s.currentWindowId;
+    const idx = stack.findIndex((r) => !r.windowId || !wid || r.windowId === wid);
+    if (idx === -1) return;
+
+    const record = stack[idx];
+    const remaining = [...stack.slice(0, idx), ...stack.slice(idx + 1)];
     // Persist the popped stack immediately so subsequent Ctrl+Z presses see it
     await chrome.storage.local.set({ tabflow_undo_stack: remaining }).catch(() => {});
     s.setUndoStack(remaining);

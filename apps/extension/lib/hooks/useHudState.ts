@@ -155,7 +155,7 @@ export function useHudState(): HudState {
     setUndoToast(null);
     // Notify background IMMEDIATELY so the capture grace period starts at the
     // very beginning of the fade-out — prevents captureVisibleTab from ever
-    // seeing the overlay, even during the 180ms CSS opacity transition.
+    // seeing the overlay, even during the 120ms CSS opacity transition.
     chrome.runtime.sendMessage({ type: 'hud-closed' }).catch(() => {});
     // Wait for the CSS fade-out to finish before removing the DOM
     setTimeout(() => {
@@ -165,7 +165,7 @@ export function useHudState(): HudState {
       setSelectedTabs(new Set());
       setGroupFilter(new Set());
       setClosingTabIds(new Set());
-    }, 150);
+    }, 120);
   }, []);
 
   const fetchTabs = useCallback(async () => {

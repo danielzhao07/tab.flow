@@ -1,12 +1,21 @@
 import './style.css';
 import { HudOverlay } from '@/components/hud/HudOverlay';
+import { handleEarlyToggle, handleEarlyHide } from '@/lib/hud-bridge';
 import ReactDOM from 'react-dom/client';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
+  runAt: 'document_start',
   cssInjectionMode: 'ui',
 
   async main(ctx) {
+    // Register toggle listener IMMEDIATELY — before async shadow root creation.
+    // This catches Alt+Q presses that arrive before React mounts.
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === 'toggle-hud') handleEarlyToggle();
+      else if (message.type === 'hide-hud') handleEarlyHide();
+    });
+
     // Tell background to capture a thumbnail once the page is fully painted
     const notifyLoaded = () => {
       chrome.runtime.sendMessage({ type: 'page-loaded' }).catch(() => {});

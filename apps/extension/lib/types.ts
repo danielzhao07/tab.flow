@@ -30,6 +30,7 @@ export interface MRUMessage {
 export type UndoRecord = {
   label: string;
   timestamp: number;
+  windowId?: number;
 } & (
   | { type: 'close'; closeCount: number }
   | { type: 'pin'; tabIds: number[]; wasPinned: boolean }

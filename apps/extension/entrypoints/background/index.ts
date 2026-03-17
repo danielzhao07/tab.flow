@@ -4,6 +4,8 @@ import { getMRUList, setMRUList } from '@/lib/storage';
 import { recordVisit } from '@/lib/frecency';
 import { getBookmarks, addBookmark, removeBookmark } from '@/lib/bookmarks';
 import { getNotesMap, saveNote, deleteNote } from '@/lib/notes';
+import { getSmartGroupName } from '@/lib/group-utils';
+import type { TabInfo } from '@/lib/types';
 
 import { getApiUrl, getDeviceId } from '@/lib/api-client';
 import { saveWorkspace } from '@/lib/workspaces';
@@ -111,6 +113,55 @@ async function getChromeBookmarks(): Promise<{ url: string; title: string }[]> {
   return collectChromeBookmarks(tree);
 }
 
+/**
+ * Try to generate a group name using Groq AI (llama-3.3-70b-versatile).
+ * Returns null if no API key, API fails, or response is invalid.
+ * Used as an upgrade over the heuristic getSmartGroupName().
+ */
+async function tryAIGroupName(tabs: Array<{ title: string; url: string }>): Promise<string | null> {
+  try {
+    const settings = await getSettings();
+    const apiKey = settings.groqApiKey;
+    if (!apiKey) return null;
+
+    const tabList = tabs.map((t, i) => {
+      const domain = (() => { try { return new URL(t.url).hostname.replace('www.', ''); } catch { return t.url; } })();
+      return `${i + 1}. "${t.title}" (${domain})`;
+    }).join('\n');
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'You name browser tab groups. Given a list of tabs, respond with ONLY a JSON object: {"name": "short group name"}. The name must be 1-3 words, descriptive, and concise. Use semantic meaning, not literal words from titles. For example, coding docs tabs → "Dev Docs", university course pages → "Courses", multiple ChatGPT conversations → "AI Chats". Never use generic words like "Tabs", "Group", "Browsing", "Web".',
+          },
+          { role: 'user', content: `Name this tab group:\n${tabList}` },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+        max_tokens: 64,
+      }),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text) return null;
+    const parsed = JSON.parse(text);
+    const name = parsed?.name?.trim();
+    return name && name.length > 0 && name.length <= 30 ? name : null;
+  } catch {
+    return null;
+  }
+}
+
 export default defineBackground(() => {
   // Initialize MRU list on install/startup
   initializeMRU();
@@ -124,8 +175,10 @@ export default defineBackground(() => {
 
   // First install: auto-trigger sign-in popup + set uninstall feedback URL
   chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+    // Always set uninstall URL (on install AND update) so existing users get the fix too
+    chrome.runtime.setUninstallURL('https://tabflow.tech/goodbye.html');
+
     if (reason === 'install') {
-      chrome.runtime.setUninstallURL('https://tabflow.tech/goodbye');
       // Open welcome page
       chrome.tabs.create({ url: chrome.runtime.getURL('/welcome.html') });
       const existing = await getStoredTokens();
@@ -292,6 +345,79 @@ export default defineBackground(() => {
     if (changed) broadcastUpdate();
   });
 
+  // Auto-name newly created tab groups that have no title.
+  // Waits for tabs to appear in the group AND finish loading so titles are accurate.
+  chrome.tabGroups.onCreated.addListener((group) => {
+    if (group.title) return; // user already named it
+    // Short initial delay so Chrome finishes moving tabs into the group
+    setTimeout(async () => {
+      try {
+        // Re-fetch the group in case it was named in the meantime
+        const current = await chrome.tabGroups.get(group.id);
+        if (current.title) return;
+
+        const maxWait = 3000;
+        const pollInterval = 300;
+        let waited = 0;
+        let groupTabs = await chrome.tabs.query({ groupId: group.id });
+
+        // Wait for tabs to appear in the group (Chrome may fire onCreated before moving tabs)
+        while (waited < maxWait && groupTabs.length === 0) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          waited += pollInterval;
+          groupTabs = await chrome.tabs.query({ groupId: group.id });
+        }
+        if (groupTabs.length === 0) return;
+
+        // Wait for tabs to finish loading so we get real titles
+        while (waited < maxWait && groupTabs.some((t) => t.status === 'loading')) {
+          await new Promise((r) => setTimeout(r, pollInterval));
+          waited += pollInterval;
+          groupTabs = await chrome.tabs.query({ groupId: group.id });
+          if (groupTabs.length === 0) return;
+          // Check if user named it while we were waiting
+          const recheck = await chrome.tabGroups.get(group.id);
+          if (recheck.title) return;
+        }
+
+        // Check one more time if it was named (by group-tabs handler or user)
+        const finalCheck = await chrome.tabGroups.get(group.id);
+        if (finalCheck.title) return;
+
+        const tabInfos: TabInfo[] = groupTabs.map((t) => ({
+          tabId: t.id!,
+          windowId: t.windowId,
+          title: t.title || 'Untitled',
+          url: t.url || '',
+          faviconUrl: t.favIconUrl || '',
+          lastAccessed: Date.now(),
+          isActive: t.active,
+          isPinned: t.pinned || false,
+          isAudible: t.audible || false,
+          isMuted: t.mutedInfo?.muted ?? false,
+          isDiscarded: t.discarded || false,
+        }));
+
+        // Set heuristic name immediately
+        const heuristicName = getSmartGroupName(tabInfos) || 'Unnamed Group';
+        await chrome.tabGroups.update(group.id, { title: heuristicName });
+
+        // Try AI naming in background — upgrades heuristic name if Groq API key is set
+        const tabData = groupTabs.map((t) => ({ title: t.title || '', url: t.url || '' }));
+        tryAIGroupName(tabData).then(async (aiName) => {
+          if (!aiName) return;
+          try {
+            // Re-check: user may have renamed it by now
+            const g = await chrome.tabGroups.get(group.id);
+            if (g.title !== heuristicName) return; // user overrode the name, don't touch
+            await chrome.tabGroups.update(group.id, { title: aiName });
+            broadcastUpdate();
+          } catch { /* group may have been removed */ }
+        });
+      } catch { /* group may have been removed */ }
+    }, 200);
+  });
+
   // Track new tabs — trigger full refetch in HUD
   chrome.tabs.onCreated.addListener(async (tab) => {
     if (tab.id) {
@@ -385,35 +511,49 @@ export default defineBackground(() => {
         // Brief pause so Chrome has time to activate the tab
         await new Promise((r) => setTimeout(r, 120));
         if (pendingToggleId !== myToggleId) { hudVisible = false; return; }
-        // Capture all windows with force (hudVisible is true, so normal captures are blocked)
-        await captureAllWindowsActiveTabs(true);
-        if (pendingToggleId !== myToggleId) { hudVisible = false; return; }
         hudTabId = realTab.tabId;
+        // Send toggle IMMEDIATELY, capture thumbnails in background
         chrome.tabs.sendMessage(realTab.tabId, { type: 'toggle-hud' }).catch(() => {
           hudVisible = false;
           hudTabId = undefined;
           hudHideTime = Date.now();
         });
+        // Capture thumbnails in background and push when ready
+        captureAllWindowsActiveTabs(true).then(() => {
+          if (hudVisible && hudTabId) {
+            chrome.tabs.sendMessage(hudTabId, {
+              type: 'thumbnails-updated',
+              thumbnails: Object.fromEntries(tabThumbnails),
+            }).catch(() => {});
+          }
+        });
         return;
       }
 
       if (activeTab?.id) {
-        // Capture ALL windows' active tabs BEFORE showing HUD so we always
-        // have fresh screenshots (like Windows Alt+Tab) — never the overlay.
-        if (!hudVisible) {
-          await captureAllWindowsActiveTabs();
-          if (pendingToggleId !== myToggleId) return; // double-press arrived during capture
-        }
         const wasVisible = hudVisible;
         hudVisible = !hudVisible;
         hudTabId = hudVisible ? activeTab.id : undefined;
         if (wasVisible) hudHideTime = Date.now(); // stamp hide time for grace period
+        // Send toggle IMMEDIATELY so the HUD opens without delay.
         chrome.tabs.sendMessage(activeTab.id, { type: 'toggle-hud' }).catch(() => {
           // Content script not loaded on this tab
           hudVisible = false;
           hudTabId = undefined;
           hudHideTime = Date.now();
         });
+        // Capture thumbnails in the background AFTER the HUD opens.
+        // Once captures complete, push updated thumbnails to the HUD.
+        if (!wasVisible) {
+          captureAllWindowsActiveTabs(true).then(() => {
+            if (hudVisible && hudTabId) {
+              chrome.tabs.sendMessage(hudTabId, {
+                type: 'thumbnails-updated',
+                thumbnails: Object.fromEntries(tabThumbnails),
+              }).catch(() => {});
+            }
+          });
+        }
       }
     }
   });
@@ -572,6 +712,28 @@ export default defineBackground(() => {
           } catch { /* group info update best-effort */ }
           broadcastUpdate();
           sendResponse({ success: true, groupId: resolvedGroupId });
+
+          // Try AI naming in the background — upgrades the heuristic name if Groq API key is set
+          if (targetGroupId == null) {
+            const groupTabs = await Promise.all(
+              validTabIds.map((id: number) => chrome.tabs.get(id).catch(() => null))
+            );
+            const tabData = groupTabs
+              .filter((t): t is chrome.tabs.Tab => t !== null)
+              .map((t) => ({ title: t.title || '', url: t.url || '' }));
+            if (tabData.length >= 1) {
+              tryAIGroupName(tabData).then(async (aiName) => {
+                if (!aiName) return;
+                try {
+                  await chrome.tabGroups.update(resolvedGroupId, { title: aiName });
+                  for (const tabId of validTabIds) {
+                    await updateTab(tabId, { groupTitle: aiName });
+                  }
+                  broadcastUpdate();
+                } catch { /* group may have been removed */ }
+              });
+            }
+          }
         } catch {
           sendResponse({ success: false });
         }
@@ -1262,19 +1424,20 @@ export default defineBackground(() => {
     const settings = await getSettings();
     if (!settings.autoSuspend) return;
 
+    // Use live Chrome tab state instead of potentially stale MRU data
     const mruList = await getMRUList();
     const now = Date.now();
     const threshold = settings.autoSuspendMinutes * 60 * 1000;
 
     for (const tabInfo of mruList) {
-      if (tabInfo.isActive || tabInfo.isPinned || tabInfo.isAudible) continue;
+      // Quick MRU time check first to avoid unnecessary chrome.tabs.get calls
       if (now - tabInfo.lastAccessed < threshold) continue;
 
       try {
+        // Always use live Chrome state for active/pinned/audible/discarded checks
         const tab = await chrome.tabs.get(tabInfo.tabId);
-        if (!tab.discarded && !tab.active) {
-          chrome.tabs.discard(tabInfo.tabId).catch(() => {});
-        }
+        if (tab.active || tab.pinned || tab.audible || tab.discarded) continue;
+        chrome.tabs.discard(tabInfo.tabId).catch(() => {});
       } catch {
         // Tab no longer exists
       }
@@ -1307,6 +1470,8 @@ async function captureAllWindowsActiveTabs(force = false) {
       if (!win.id) return;
       const [active] = await chrome.tabs.query({ active: true, windowId: win.id });
       if (active?.id && canSendMessage(active.url)) {
+        // Skip the tab that has the HUD open — otherwise the overlay appears in the screenshot
+        if (hudVisible && active.id === hudTabId) return;
         await captureThumbnail(active.id, win.id, force);
       }
     }));
